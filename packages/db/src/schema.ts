@@ -1,10 +1,28 @@
-import { pgEnum, pgTable, integer, jsonb, text, timestamp, uuid } from 'drizzle-orm/pg-core';
+import {
+  pgEnum,
+  pgSchema,
+  pgTable,
+  integer,
+  jsonb,
+  text,
+  timestamp,
+  uuid,
+} from 'drizzle-orm/pg-core';
 
 // Mirrors packages/shared's Zod schemas 1:1 — one source of truth per entity,
 // just expressed twice (runtime validation vs. storage), as CLAUDE.md requires.
 
+// Minimal reference into Supabase Auth's own schema, so `users.id` can match
+// the id Supabase issues — we don't own or migrate this table.
+const authSchema = pgSchema('auth');
+export const authUsers = authSchema.table('users', {
+  id: uuid('id').primaryKey(),
+});
+
 export const users = pgTable('users', {
-  id: uuid('id').primaryKey().defaultRandom(),
+  id: uuid('id')
+    .primaryKey()
+    .references(() => authUsers.id, { onDelete: 'cascade' }),
   email: text('email').notNull().unique(),
   createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
 });
