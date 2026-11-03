@@ -12,3 +12,8 @@ export const apiKeySchema = z.object({
 });
 
 export type ApiKey = z.infer<typeof apiKeySchema>;
+
+// What a user actually submits when creating a key — just a label.
+export const createApiKeyInputSchema = apiKeySchema.pick({ label: true });
+
+export type CreateApiKeyInput = z.infer<typeof createApiKeyInputSchema>;

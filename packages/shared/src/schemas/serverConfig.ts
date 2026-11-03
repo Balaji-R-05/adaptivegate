@@ -22,3 +22,14 @@ export const serverConfigSchema = z.object({
 });
 
 export type ServerConfig = z.infer<typeof serverConfigSchema>;
+
+// What a user actually submits when adding a server — no id/userId/createdAt,
+// those are assigned server-side.
+export const createServerConfigInputSchema = serverConfigSchema.pick({
+  name: true,
+  url: true,
+  auth: true,
+  enabledTools: true,
+});
+
+export type CreateServerConfigInput = z.infer<typeof createServerConfigInputSchema>;

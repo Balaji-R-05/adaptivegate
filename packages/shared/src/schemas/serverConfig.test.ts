@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { serverConfigSchema } from './serverConfig';
+import { createServerConfigInputSchema, serverConfigSchema } from './serverConfig';
 
 const base = {
   id: '3b0f3c8a-5b1e-4b8b-9f9e-7a6f9b3a2c11',
@@ -34,6 +34,26 @@ describe('serverConfigSchema', () => {
   it('rejects a non-URL', () => {
     const result = serverConfigSchema.safeParse({
       ...base,
+      url: 'not-a-url',
+      auth: { type: 'none' },
+    });
+    expect(result.success).toBe(false);
+  });
+});
+
+describe('createServerConfigInputSchema', () => {
+  it('accepts just the user-submitted fields', () => {
+    const result = createServerConfigInputSchema.safeParse({
+      name: 'github',
+      url: 'https://example.com/github-mcp',
+      auth: { type: 'none' },
+    });
+    expect(result.success).toBe(true);
+  });
+
+  it('rejects a non-URL', () => {
+    const result = createServerConfigInputSchema.safeParse({
+      name: 'github',
       url: 'not-a-url',
       auth: { type: 'none' },
     });

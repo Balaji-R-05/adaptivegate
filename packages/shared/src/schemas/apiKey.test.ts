@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { apiKeySchema } from './apiKey';
+import { apiKeySchema, createApiKeyInputSchema } from './apiKey';
 
 const base = {
   id: '3b0f3c8a-5b1e-4b8b-9f9e-7a6f9b3a2c11',
@@ -23,5 +23,15 @@ describe('apiKeySchema', () => {
 
   it('rejects an empty label', () => {
     expect(apiKeySchema.safeParse({ ...base, label: '' }).success).toBe(false);
+  });
+});
+
+describe('createApiKeyInputSchema', () => {
+  it('accepts just a label', () => {
+    expect(createApiKeyInputSchema.safeParse({ label: 'laptop' }).success).toBe(true);
+  });
+
+  it('rejects an empty label', () => {
+    expect(createApiKeyInputSchema.safeParse({ label: '' }).success).toBe(false);
   });
 });
