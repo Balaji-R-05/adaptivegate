@@ -1,3 +1,7 @@
+# Local Postgres (pgvector) for fully offline dev. Not used by default now
+# that DATABASE_URL points at the Supabase project's own Postgres (see
+# .env.example) — Supabase Auth's auth.users only exists there, so the real
+# dev/login loop runs against Supabase, not this container.
 services:
   postgres:
     image: pgvector/pgvector:pg16
