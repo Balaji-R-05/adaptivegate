@@ -8,9 +8,6 @@ AdaptiveGate sits between an AI agent (Claude Code or any MCP-capable client) an
 2. **Recovers**: handles tool failures automatically with configurable recovery policies.
 3. **Governs**: enforces safety, privacy and compliance rules on every tool call, with a full audit trail.
 
-> Final-year B.Tech project, Department of Information Technology, St. Joseph's Institute of Technology, Chennai (2023-2027).
-> Guide: Mr. Bino J
->
 > Free and open source under the MIT license, so anyone can use it as a governance harness for their own agents.
 
 ---
@@ -27,12 +24,9 @@ Because the gateway sees every call between agent and tools, it is the natural p
 
 ## How It Works
 
-```
-React dashboard  ──REST/SSE──►  Backend API + DB  ◄──reads config──  Gateway (MCP endpoint)
-(login, stats, config)          (users, servers, stats)              https://host/mcp  ◄── Claude Code etc.
-```
+![Request flow: React dashboard talks REST/SSE to the Backend API + DB; the Gateway reads config from the same DB and exposes an MCP endpoint that clients like Claude Code connect to.](images/flow.png)
 
-1. A user signs in to the dashboard with GitHub or Google (Supabase Auth).
+1. A user signs in to the dashboard with GitHub (Supabase Auth).
 2. They add their downstream MCP servers, choose a policy pack and generate an API key.
 3. They add the router MCP link to their client:
    ```bash
@@ -52,7 +46,7 @@ React dashboard  ──REST/SSE──►  Backend API + DB  ◄──reads confi
 
 ### AI governance
 
-- **Policy-as-code engine**: write rules in YAML and enforce them on every call, for example "no deletes outside `/project`", "max 20 tool calls per task", "require approval for GitHub writes". Ships with ready-made policy packs (safe coding agent, read-only research agent, no-PII-leaves-the-machine).
+- **Policy-as-Code engine**: write rules in YAML and enforce them on every call, for example "no deletes outside `/project`", "max 20 tool calls per task", "require approval for GitHub writes". Ships with ready-made policy packs (safe coding agent, read-only research agent, no-PII-leaves-the-machine).
 - **Human-in-the-loop approvals**: risky calls pause for approval via the dashboard or terminal. Choices: allow once, allow for session, always allow. Risk is tiered so low-risk calls never interrupt.
 - **Tamper-evident audit log**: every call, argument, result, policy decision and approval goes into an append-only, hash-chained log.
 - **Data protection and guardrails**:
@@ -95,20 +89,20 @@ React dashboard  ──REST/SSE──►  Backend API + DB  ◄──reads confi
 ## Architecture
 
 ```
-┌──────────────┐      ┌────────────────────────────────────────┐      ┌────────────────┐
-│  AI Agent    │ MCP  │              AdaptiveGate              │ MCP  │ MCP Server A   │
-│ (Claude Code)│◄────►│                                        │◄────►│ MCP Server B   │
-└──────────────┘      │  ┌──────────┐  ┌──────────┐            │      │ MCP Server C   │
-                      │  │  Router  │  │ Recovery │            │      │      ...       │
-                      │  └──────────┘  └──────────┘            │      └────────────────┘
-                      │  ┌─────────────── Governance ────────┐ │
+┌──────────────┐      ┌─────────────────────────────────────────┐      ┌────────────────┐
+│  AI Agent    │ MCP  │              AdaptiveGate               │ MCP  │ MCP Server A   │
+│ (Claude Code)│◄────►│                                         │◄────►│ MCP Server B   │
+└──────────────┘      │  ┌──────────┐  ┌──────────┐             │      │ MCP Server C   │
+                      │  │  Router  │  │ Recovery │             │      │      ...       │
+                      │  └──────────┘  └──────────┘             │      └────────────────┘
+                      │  ┌─────────────── Governance ─────────┐ │
                       │  │ Policy Engine │ Approvals │ Guards │ │
                       │  │ Budgets │ Identity │ Audit Log     │ │
-                      │  └───────────────────────────────────┘ │
-                      │  ┌──────────┐  ┌──────────┐            │
-                      │  │ Registry │  │ Metrics  │            │
-                      │  └──────────┘  └──────────┘            │
-                      └───────────────────▲────────────────────┘
+                      │  └────────────────────────────────────┘ │
+                      │  ┌──────────┐  ┌──────────┐             │
+                      │  │ Registry │  │ Metrics  │             │
+                      │  └──────────┘  └──────────┘             │
+                      └───────────────────▲─────────────────────┘
                                           │ per-user config and events
                       ┌───────────────────┴────────────────────┐
                       │  Backend API + Supabase Postgres ◄──►  │
