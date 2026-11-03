@@ -1,19 +1,25 @@
-# Local Postgres (pgvector) for fully offline dev. Not used by default now
-# that DATABASE_URL points at the Supabase project's own Postgres (see
-# .env.example) — Supabase Auth's auth.users only exists there, so the real
-# dev/login loop runs against Supabase, not this container.
+# Local demo/dev convenience: `docker compose up` runs the server and
+# dashboard together without needing pnpm installed on the host. This is not
+# the production deployment plan (see README's Tech Stack: server on
+# Render/Railway/Fly.io, dashboard on Vercel/Netlify) — just a quick way to
+# spin up the whole stack to show someone. The actual database is Supabase's
+# hosted Postgres (see .env.example), not a container.
 services:
-  postgres:
-    image: pgvector/pgvector:pg16
-    restart: unless-stopped
-    environment:
-      POSTGRES_USER: ${POSTGRES_USER:-adaptivegate}
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-adaptivegate}
-      POSTGRES_DB: ${POSTGRES_DB:-adaptivegate}
+  server:
+    build:
+      context: .
+      dockerfile: apps/server/Dockerfile
+    env_file:
+      - .env
     ports:
-      - '${POSTGRES_PORT:-5432}:5432'
-    volumes:
-      - postgres-data:/var/lib/postgresql/data
+      - '3000:3000'
 
-volumes:
-  postgres-data:
+  dashboard:
+    build:
+      context: .
+      dockerfile: apps/dashboard/Dockerfile
+      args:
+        VITE_SUPABASE_URL: ${VITE_SUPABASE_URL}
+        VITE_SUPABASE_ANON_KEY: ${VITE_SUPABASE_ANON_KEY}
+    ports:
+      - '5173:4173'
