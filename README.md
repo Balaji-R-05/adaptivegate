@@ -44,12 +44,14 @@ React dashboard  ──REST/SSE──►  Backend API + DB  ◄──reads confi
 ## Key Features
 
 ### Routing and recovery
+
 - Installable MCP server, works as a plugin/gateway for Claude Code and other agentic tools
 - **Hybrid tool routing (ToolGate)**: keyword search (BM25) combined with semantic embeddings (pgvector), merged with reciprocal rank fusion, to expose only relevant tools and reduce token usage
 - Pluggable, failure-aware recovery policies (retry, fallback tool, re-route, escalate), with comparison of policies as a research contribution
 - Aggregates multiple downstream MCP servers behind one endpoint
 
 ### AI governance
+
 - **Policy-as-code engine**: write rules in YAML and enforce them on every call, for example "no deletes outside `/project`", "max 20 tool calls per task", "require approval for GitHub writes". Ships with ready-made policy packs (safe coding agent, read-only research agent, no-PII-leaves-the-machine).
 - **Human-in-the-loop approvals**: risky calls pause for approval via the dashboard or terminal. Choices: allow once, allow for session, always allow. Risk is tiered so low-risk calls never interrupt.
 - **Tamper-evident audit log**: every call, argument, result, policy decision and approval goes into an append-only, hash-chained log.
@@ -63,6 +65,7 @@ React dashboard  ──REST/SSE──►  Backend API + DB  ◄──reads confi
 - **Open governance benchmark**: a runnable suite of attack scenarios (prompt injection via tool output, privilege escalation, data exfiltration, tool poisoning) that anyone can use to score their agent or gateway.
 
 ### Web dashboard (React)
+
 - **Login**: GitHub OAuth through Supabase Auth first (Google added later), restricted to an invite allowlist during testing
 - **Overview**: tokens saved, calls, success and recovery rate, and calls blocked by policy, with charts and live updates
 - **Servers**: add, edit and remove downstream MCP servers (URL, auth, enabled tools) with a test-connection button
@@ -74,6 +77,7 @@ React dashboard  ──REST/SSE──►  Backend API + DB  ◄──reads confi
 ## MVP and Later
 
 **MVP (core deliverable)**
+
 - Gateway with hybrid router and API-key auth
 - Dashboard with login (one OAuth provider first), Servers and Connect pages
 - Policy engine (allow, deny, require approval), budgets/kill switch and agent identity scopes
@@ -81,6 +85,7 @@ React dashboard  ──REST/SSE──►  Backend API + DB  ◄──reads confi
 - Failure injection and governance attack benchmark, with measured results
 
 **Later (stretch goals)**
+
 - Second OAuth provider
 - MCP OAuth 2.1 so clients can sign in without pasting keys
 - Support for local stdio servers via a gateway running on the user's own machine
@@ -115,22 +120,23 @@ React dashboard  ──REST/SSE──►  Backend API + DB  ◄──reads confi
 
 Every request flows: **API key → user lookup → policy engine → (approval if required) → router → downstream tool → output guards → audit log and event record**, with recovery policies applied on failure.
 
-| Component | Responsibility |
-|---|---|
-| Tool Registry | Indexes tools from all connected downstream MCP servers |
-| Tool Router | Hybrid BM25 + embedding retrieval with reciprocal rank fusion |
-| Recovery Policies | Decides what to do when a tool call fails |
-| Policy Engine | Evaluates allow / deny / require-approval rules per call |
-| Approvals | Human-in-the-loop prompts across dashboard, terminal and chat |
-| Guards | Secret/PII redaction, injection scanning, tool-definition pinning |
-| Budgets | Token, cost, call-count and time limits, kill switch |
-| Identity | Scoped permissions per agent or session, API key lookup |
-| Audit Log | Hash-chained, tamper-evident record of everything |
-| Metrics | Token usage, latency, accuracy, recovery and governance outcomes |
-| Backend API | Users, keys, server configs, policies and stats for the dashboard |
-| Dashboard | React UI for login, stats and configuration |
+| Component         | Responsibility                                                    |
+| ----------------- | ----------------------------------------------------------------- |
+| Tool Registry     | Indexes tools from all connected downstream MCP servers           |
+| Tool Router       | Hybrid BM25 + embedding retrieval with reciprocal rank fusion     |
+| Recovery Policies | Decides what to do when a tool call fails                         |
+| Policy Engine     | Evaluates allow / deny / require-approval rules per call          |
+| Approvals         | Human-in-the-loop prompts across dashboard, terminal and chat     |
+| Guards            | Secret/PII redaction, injection scanning, tool-definition pinning |
+| Budgets           | Token, cost, call-count and time limits, kill switch              |
+| Identity          | Scoped permissions per agent or session, API key lookup           |
+| Audit Log         | Hash-chained, tamper-evident record of everything                 |
+| Metrics           | Token usage, latency, accuracy, recovery and governance outcomes  |
+| Backend API       | Users, keys, server configs, policies and stats for the dashboard |
+| Dashboard         | React UI for login, stats and configuration                       |
 
 ### Security notes for the hosted version
+
 - **Remote servers only.** Hosted mode accepts remote HTTP/SSE MCP servers. Accepting stdio commands such as `npx some-server` would let users run arbitrary commands on the host, so stdio is reserved for a locally run gateway.
 - **Credentials are encrypted at rest** with a server-side key and never returned to the browser.
 - **API keys are stored hashed**, shown once and revocable.
@@ -141,19 +147,19 @@ Every request flows: **API key → user lookup → policy engine → (approval i
 
 ## Tech Stack
 
-| Area | Choice |
-|---|---|
-| Language | TypeScript everywhere (gateway, backend, dashboard, shared types) |
-| Monorepo | pnpm workspaces |
-| Gateway and API | Node.js with Hono or Fastify, official MCP TypeScript SDK (Streamable HTTP) |
-| Dashboard | Vite, React, Tailwind CSS, shadcn/ui, TanStack Query, Recharts |
-| Shared schemas | Zod (one definition used by gateway, API and dashboard) |
-| Database | Supabase Postgres with Drizzle ORM, row-level security, pgvector for embeddings |
-| Auth | Supabase Auth (GitHub OAuth first; Google added later) |
-| Routing | MiniSearch (BM25) + embeddings via pgvector, merged with reciprocal rank fusion |
-| Live updates | Server-sent events |
-| Testing | Vitest, Playwright |
-| Deployment | Containerized server on Render, Railway or Fly.io; dashboard on Vercel or Netlify |
+| Area            | Choice                                                                            |
+| --------------- | --------------------------------------------------------------------------------- |
+| Language        | TypeScript everywhere (gateway, backend, dashboard, shared types)                 |
+| Monorepo        | pnpm workspaces                                                                   |
+| Gateway and API | Node.js with Hono or Fastify, official MCP TypeScript SDK (Streamable HTTP)       |
+| Dashboard       | Vite, React, Tailwind CSS, shadcn/ui, TanStack Query, Recharts                    |
+| Shared schemas  | Zod (one definition used by gateway, API and dashboard)                           |
+| Database        | Supabase Postgres with Drizzle ORM, row-level security, pgvector for embeddings   |
+| Auth            | Supabase Auth (GitHub OAuth first; Google added later)                            |
+| Routing         | MiniSearch (BM25) + embeddings via pgvector, merged with reciprocal rank fusion   |
+| Live updates    | Server-sent events                                                                |
+| Testing         | Vitest, Playwright                                                                |
+| Deployment      | Containerized server on Render, Railway or Fly.io; dashboard on Vercel or Netlify |
 
 ## Getting Started
 
@@ -194,11 +200,11 @@ servers:
     url: https://example.com/docs-mcp
 
 router:
-  mode: hybrid          # bm25 | embedding | hybrid
+  mode: hybrid # bm25 | embedding | hybrid
   top_k: 8
 
 recovery:
-  policy: fallback      # retry | fallback | reroute | escalate
+  policy: fallback # retry | fallback | reroute | escalate
   max_attempts: 3
 ```
 
@@ -212,11 +218,11 @@ budgets:
   max_cost_usd: 2.00
 rules:
   - name: no-delete-outside-project
-    match: { tool: "filesystem.delete_*" }
-    when: { path_not_under: "./project" }
+    match: { tool: 'filesystem.delete_*' }
+    when: { path_not_under: './project' }
     action: deny
   - name: approve-github-writes
-    match: { tool: "github.create_*" }
+    match: { tool: 'github.create_*' }
     action: require_approval
   - name: redact-secrets
     match: { direction: both }

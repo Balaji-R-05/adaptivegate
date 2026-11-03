@@ -67,6 +67,7 @@ pnpm benchmark           # run the governance attack benchmark
 ## Conventions
 
 ### General
+
 - Recovery policies and governance components sit behind common interfaces so new ones are drop-in
 - Never hardcode downstream servers or rules; everything comes from the database, `config.yaml` or policy YAML files
 - Prefer small, focused modules; keep `apps/server` handlers thin and put logic in `packages/core`
@@ -74,6 +75,7 @@ pnpm benchmark           # run the governance attack benchmark
 - Every guard needs both a blocked case and a benign case (to track false positives)
 
 ### TypeScript
+
 - `strict` mode on; avoid `any` (use `unknown` and narrow) and explain any unavoidable exception in a comment
 - Define data shapes once as Zod schemas in `packages/shared` and derive types with `z.infer`; validate all external input (HTTP bodies, MCP messages, config and policy files) with them
 - Prefer discriminated unions for results and policy actions over booleans and magic strings
@@ -81,6 +83,7 @@ pnpm benchmark           # run the governance attack benchmark
 - No default exports in packages (named exports only) so imports stay greppable
 
 ### Gateway and governance
+
 - Policy evaluation must be deterministic and side-effect free; side effects (approvals, logging) happen outside the evaluator
 - Default to **fail closed**: if a policy cannot be evaluated or a guard errors, deny or require approval, never silently allow
 - Every routing decision, recovery attempt and governance decision goes through the audit log and the metrics module so experiments are reproducible
@@ -89,17 +92,20 @@ pnpm benchmark           # run the governance attack benchmark
 - Router changes must be evaluated against the saved benchmark, comparing BM25-only, embedding-only and hybrid
 
 ### Dashboard (React)
+
 - Server state through TanStack Query; no ad-hoc fetching in components
 - Never store tokens, API keys or downstream credentials in localStorage; rely on Supabase Auth's session handling
 - API keys are displayed once at creation and never fetched again
 - Components stay small; shared UI goes through shadcn/ui primitives
 
 ### Database
+
 - All schema changes go through Drizzle migrations, never manual edits
 - Enable Supabase row-level security on every user-owned table as a second layer behind application checks
 - Store embeddings in pgvector columns; record the embedding model name alongside them so they can be regenerated
 
 ### Security (hosted mode)
+
 - Hosted mode accepts **remote HTTP/SSE MCP servers only**. Never execute user-supplied stdio commands on the host
 - Encrypt downstream credentials at rest with a server-side key; never return them to the browser
 - Store API keys hashed; support revoke and rotate
