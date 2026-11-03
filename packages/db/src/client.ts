@@ -1,4 +1,4 @@
-import { drizzle } from 'drizzle-orm/postgres-js';
+import { drizzle, type PostgresJsDatabase } from 'drizzle-orm/postgres-js';
 import postgres from 'postgres';
 import * as schema from './schema';
 
@@ -10,6 +10,24 @@ function requireDatabaseUrl(): string {
   return url;
 }
 
-const queryClient = postgres(requireDatabaseUrl());
+type Db = PostgresJsDatabase<typeof schema>;
 
-export const db = drizzle(queryClient, { schema });
+let instance: Db | undefined;
+
+function getDb(): Db {
+  if (!instance) {
+    instance = drizzle(postgres(requireDatabaseUrl()), { schema });
+  }
+  return instance;
+}
+
+// Constructed on first use, not on import, so importing this package never
+// throws just because DATABASE_URL isn't set yet (e.g. in tests that mock
+// this module entirely and never touch a real connection).
+export const db: Db = new Proxy({} as Db, {
+  get(_target, prop) {
+    const real = getDb();
+    const value = Reflect.get(real, prop, real);
+    return typeof value === 'function' ? value.bind(real) : value;
+  },
+});
