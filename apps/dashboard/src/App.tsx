@@ -3,6 +3,7 @@ import { BrowserRouter, Link, Navigate, Route, Routes } from 'react-router';
 import { useSession } from './hooks/useSession';
 import { supabase } from './lib/supabase';
 import { ConnectPage } from './pages/ConnectPage';
+import { LandingPage } from './pages/LandingPage';
 import { ServersPage } from './pages/ServersPage';
 
 const queryClient = new QueryClient();
@@ -60,16 +61,7 @@ export function App() {
         ) : session ? (
           <SignedInShell email={session.user.email} />
         ) : (
-          <main className="flex min-h-screen flex-col items-center justify-center gap-4 bg-slate-50">
-            <h1 className="text-2xl font-semibold text-slate-900">AdaptiveGate Dashboard</h1>
-            <button
-              type="button"
-              onClick={signInWithGitHub}
-              className="rounded bg-slate-900 px-4 py-2 text-white"
-            >
-              Sign in with GitHub
-            </button>
-          </main>
+          <LandingPage onSignIn={signInWithGitHub} />
         )}
       </BrowserRouter>
     </QueryClientProvider>
