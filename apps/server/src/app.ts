@@ -1,5 +1,6 @@
 import { Hono } from 'hono';
 import { apiKeysRouter } from './api/apiKeys';
+import { policiesRouter } from './api/policies';
 import { serversRouter } from './api/servers';
 import { requireUser } from './auth/supabaseAuth';
 import { mcpHandler } from './mcp/route';
@@ -17,3 +18,4 @@ app.all('/mcp', mcpHandler);
 app.use('/api/*', requireUser);
 app.route('/api/servers', serversRouter);
 app.route('/api/keys', apiKeysRouter);
+app.route('/api/policies', policiesRouter);

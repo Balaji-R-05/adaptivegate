@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { policySchema } from './policy';
+import { createPolicyInputSchema, policySchema } from './policy';
 
 const base = {
   id: '3b0f3c8a-5b1e-4b8b-9f9e-7a6f9b3a2c11',
@@ -21,5 +21,16 @@ describe('policySchema', () => {
 
   it('rejects empty yaml', () => {
     expect(policySchema.safeParse({ ...base, yaml: '' }).success).toBe(false);
+  });
+});
+
+describe('createPolicyInputSchema', () => {
+  it('accepts just the user-submitted fields', () => {
+    const result = createPolicyInputSchema.safeParse({ name: base.name, yaml: base.yaml });
+    expect(result.success).toBe(true);
+  });
+
+  it('rejects empty yaml', () => {
+    expect(createPolicyInputSchema.safeParse({ name: base.name, yaml: '' }).success).toBe(false);
   });
 });

@@ -105,5 +105,10 @@ export const events = pgTable('events', {
   type: eventType('type').notNull(),
   // Append-only: no update/delete path should ever target this table.
   payload: jsonb('payload').notNull(),
+  // Hash chain is scoped per user (not global) — see
+  // apps/server/src/governance/auditLog.ts. previousHash is null only for
+  // the first event in a given user's chain.
+  hash: text('hash').notNull(),
+  previousHash: text('previous_hash'),
   createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
 });

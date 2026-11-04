@@ -10,6 +10,8 @@ import { z } from 'zod';
 const apiKeysTable = Symbol('apiKeys');
 const serversTable = Symbol('servers');
 const toolEmbeddingsTable = Symbol('toolEmbeddings');
+const policiesTable = Symbol('policies');
+const eventsTable = Symbol('events');
 
 interface UserToolRow {
   name: string;
@@ -19,14 +21,20 @@ interface UserToolRow {
   inputSchema: unknown;
 }
 
+const ALLOW_ALL_POLICY_YAML =
+  'version: 1\nrules:\n  - name: allow-all\n    match: { tool: "*" }\n    action: allow\n';
+
 let apiKeyRows: Array<{ userId: string }> = [];
 let userToolRows: UserToolRow[] = [];
 let joinedServerUrlRows: Array<{ url: string; auth: { type: 'none' } }> = [];
+let policyRows: Array<{ yaml: string }> = [{ yaml: ALLOW_ALL_POLICY_YAML }];
 
 vi.mock('@adaptivegate/db', () => ({
   apiKeys: apiKeysTable,
   servers: serversTable,
   toolEmbeddings: toolEmbeddingsTable,
+  policies: policiesTable,
+  events: eventsTable,
   db: {
     select: () => ({
       from: (table: unknown) => {
@@ -41,9 +49,18 @@ vi.mock('@adaptivegate/db', () => ({
             }),
           };
         }
+        if (table === policiesTable) {
+          return {
+            where: () => ({ orderBy: () => ({ limit: () => Promise.resolve(policyRows) }) }),
+          };
+        }
+        if (table === eventsTable) {
+          return { where: () => ({ orderBy: () => ({ limit: () => Promise.resolve([]) }) }) };
+        }
         return { where: () => Promise.resolve([]) };
       },
     }),
+    insert: () => ({ values: () => Promise.resolve() }),
   },
 }));
 
@@ -118,6 +135,7 @@ beforeEach(() => {
   apiKeyRows = [];
   userToolRows = [];
   joinedServerUrlRows = [];
+  policyRows = [{ yaml: ALLOW_ALL_POLICY_YAML }];
 });
 
 describe('/mcp', () => {
@@ -230,6 +248,72 @@ describe('/mcp', () => {
       arguments: { name: 'echo', serverId: 'server-2', arguments: { message: 'hi' } },
     });
     expect(resultFromServer2.content).toEqual([{ type: 'text', text: 'SERVER-2: hi' }]);
+
+    await client.close();
+  });
+
+  it('call_tool is blocked by a deny policy before ever reaching the downstream server', async () => {
+    apiKeyRows = [{ userId: 'user-1' }];
+    userToolRows = [
+      {
+        name: 'echo',
+        description: 'echo',
+        serverId: 'server-1',
+        embedding: [1, 0, 0],
+        inputSchema: {},
+      },
+    ];
+    joinedServerUrlRows = [{ url: downstreamUrl, auth: { type: 'none' } }];
+    policyRows = [
+      {
+        yaml: 'version: 1\nrules:\n  - name: no-echo\n    match: { tool: "echo" }\n    action: deny\n',
+      },
+    ];
+
+    const client = new Client({ name: 'test-client', version: '0.0.0' });
+    const transport = new StreamableHTTPClientTransport(
+      new URL(`http://localhost:${gatewayPort}/mcp`),
+      { requestInit: { headers: { Authorization: 'Bearer ag_test-key' } } },
+    );
+    await client.connect(transport);
+
+    await expect(
+      client.callTool({
+        name: 'call_tool',
+        arguments: { name: 'echo', serverId: 'server-1', arguments: { message: 'hello' } },
+      }),
+    ).rejects.toThrow(/denied by policy/);
+
+    await client.close();
+  });
+
+  it('call_tool denies by default when the account has no policy configured', async () => {
+    apiKeyRows = [{ userId: 'user-1' }];
+    userToolRows = [
+      {
+        name: 'echo',
+        description: 'echo',
+        serverId: 'server-1',
+        embedding: [1, 0, 0],
+        inputSchema: {},
+      },
+    ];
+    joinedServerUrlRows = [{ url: downstreamUrl, auth: { type: 'none' } }];
+    policyRows = [];
+
+    const client = new Client({ name: 'test-client', version: '0.0.0' });
+    const transport = new StreamableHTTPClientTransport(
+      new URL(`http://localhost:${gatewayPort}/mcp`),
+      { requestInit: { headers: { Authorization: 'Bearer ag_test-key' } } },
+    );
+    await client.connect(transport);
+
+    await expect(
+      client.callTool({
+        name: 'call_tool',
+        arguments: { name: 'echo', serverId: 'server-1', arguments: { message: 'hello' } },
+      }),
+    ).rejects.toThrow(/denied by policy/);
 
     await client.close();
   });

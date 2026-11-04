@@ -248,6 +248,9 @@ importers:
       '@adaptivegate/db':
         specifier: workspace:*
         version: link:../../packages/db
+      '@adaptivegate/governance':
+        specifier: workspace:*
+        version: link:../../packages/core/governance
       '@adaptivegate/router':
         specifier: workspace:*
         version: link:../../packages/core/router
@@ -295,6 +298,19 @@ importers:
       tsx:
         specifier: ^4.19.2
         version: 4.23.15
+
+  packages/core/governance:
+    dependencies:
+      js-yaml:
+        specifier: ^4.1.0
+        version: 4.3.2
+      zod:
+        specifier: ^3.24.1
+        version: 3.25.76
+    devDependencies:
+      '@types/js-yaml':
+        specifier: ^4.0.9
+        version: 4.0.9
 
   packages/core/router:
     dependencies:
@@ -1662,6 +1678,9 @@ packages:
 
   '@types/estree@1.0.10':
     resolution: {integrity: sha512-lTyOMnOcmRBzdCv6/4zUZCrEhV0xrqQiUZBZtVcbmLHBXKLnN8q89v/wKRF/Q0HbwVsqbIG3o5HDoFl9sduM+g==}
+
+  '@types/js-yaml@4.0.9':
+    resolution: {integrity: sha512-k4MGaQl5TGo/iipqb2UDG2UwjXziSWkh0uysQelTlJpX1qGlpUZYm8PnO4DxG1qBomtJUdYJ6qR6xdIah10JLg==}
 
   '@types/json-schema@7.0.15':
     resolution: {integrity: sha512-5+fP8P8MFNC+AyZCDxrB2pkZFPGzqQWUzpSeuuVLvm8VMcorNYavBqoFcxK8bQz4Qsbn4oUEEem4wDLfcysGHA==}
@@ -4172,6 +4191,8 @@ snapshots:
       '@babel/types': 7.29.11
 
   '@types/estree@1.0.10': {}
+
+  '@types/js-yaml@4.0.9': {}
 
   '@types/json-schema@7.0.15': {}
 

@@ -6,6 +6,8 @@ import { CallToolRequestSchema, ListToolsRequestSchema } from '@modelcontextprot
 import { and, eq } from 'drizzle-orm';
 import { z } from 'zod';
 import { embedText } from '../embeddings/embed';
+import { recordEvent } from '../governance/auditLog';
+import { evaluateCallToolPolicy } from '../governance/policyEngine';
 import { callDownstreamTool, connectDownstream } from './downstreamClient';
 
 const DEFAULT_TOP_K = 5;
@@ -137,6 +139,28 @@ export function createGatewayServer(userId: string): Server {
 
     if (request.params.name === 'call_tool') {
       const input = callToolInput.parse(request.params.arguments);
+
+      const verdict = await evaluateCallToolPolicy(userId, input.name);
+      await recordEvent({
+        userId,
+        type: 'policy_decision',
+        payload: { tool: input.name, serverId: input.serverId, verdict },
+      });
+
+      if (verdict.action !== 'allow') {
+        await recordEvent({
+          userId,
+          type: 'tool_call',
+          payload: { tool: input.name, serverId: input.serverId, blocked: true, verdict },
+        });
+        // require_approval is a real policy outcome, but nothing can resolve
+        // an approval yet (that's build-order step 8) — it blocks, same as
+        // deny, with a message saying so rather than silently auto-approving.
+        throw new Error(
+          `${verdict.action === 'deny' ? 'denied' : 'blocked (requires approval, not yet available)'} by policy: ${verdict.reason}`,
+        );
+      }
+
       const target = await findToolServer(userId, input.serverId, input.name);
       if (!target) {
         throw new Error(
@@ -146,7 +170,16 @@ export function createGatewayServer(userId: string): Server {
 
       const client = await connectDownstream(target.url, target.auth);
       try {
-        return await callDownstreamTool(client, { name: input.name, arguments: input.arguments });
+        const result = await callDownstreamTool(client, {
+          name: input.name,
+          arguments: input.arguments,
+        });
+        await recordEvent({
+          userId,
+          type: 'tool_call',
+          payload: { tool: input.name, serverId: input.serverId, blocked: false },
+        });
+        return result;
       } finally {
         await client.close();
       }

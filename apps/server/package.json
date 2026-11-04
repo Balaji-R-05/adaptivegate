@@ -9,11 +9,13 @@
     "typecheck": "tsc -p tsconfig.typecheck.json",
     "start": "node --env-file=../../.env dist/index.js",
     "seed": "tsx --env-file=../../.env scripts/seed.ts",
+    "create-policy": "tsx --env-file=../../.env scripts/createPolicy.ts",
     "fixture:downstream": "tsx fixtures/downstreamServer.ts",
     "evaluate:live-catalog": "tsx --env-file=../../.env scripts/evaluateLiveCatalog.ts"
   },
   "dependencies": {
     "@adaptivegate/db": "workspace:*",
+    "@adaptivegate/governance": "workspace:*",
     "@adaptivegate/router": "workspace:*",
     "@adaptivegate/shared": "workspace:*",
     "@hono/node-server": "^1.13.7",

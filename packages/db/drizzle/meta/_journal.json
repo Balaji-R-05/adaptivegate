@@ -43,6 +43,13 @@
       "when": 1793770899813,
       "tag": "0005_tool_embeddings_rls",
       "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "7",
+      "when": 1793776296744,
+      "tag": "0006_public_angel",
+      "breakpoints": true
     }
   ]
 }
