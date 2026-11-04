@@ -1,0 +1,86 @@
+{
+  "runAt": "2026-11-04T06:58:06.863Z",
+  "catalog": {
+    "serverCount": 10,
+    "toolCount": 74
+  },
+  "tokenFootprint": {
+    "allToolsExposedDirectly": 16856,
+    "metaToolsOnly": 38,
+    "reductionPercent": 99.8,
+    "method": "approximate: chars/4, not a real tokenizer"
+  },
+  "searchToolsRouting": {
+    "top1CorrectCount": 10,
+    "totalQueries": 10,
+    "note": "expectRelevant is this script's own relevance judgment, not a labeled ground-truth dataset",
+    "perQuery": [
+      {
+        "query": "generate a QR code for a URL",
+        "top1": "generate_qr",
+        "correct": true,
+        "latencyMs": 1424.3751000000002
+      },
+      {
+        "query": "what are the trading hours for the NYSE today",
+        "top1": "get_trading_sessions",
+        "correct": true,
+        "latencyMs": 799.9448000000002
+      },
+      {
+        "query": "find SEC filings and insider trades for a public company",
+        "top1": "insider_transactions",
+        "correct": true,
+        "latencyMs": 667.9775
+      },
+      {
+        "query": "search Azure documentation for Azure Functions",
+        "top1": "microsoft_code_sample_search",
+        "correct": true,
+        "latencyMs": 612.8379000000004
+      },
+      {
+        "query": "create a flowchart diagram",
+        "top1": "get_drawio_reference",
+        "correct": true,
+        "latencyMs": 702.9927000000007
+      },
+      {
+        "query": "ask a question about a GitHub repository codebase",
+        "top1": "ask_wiki_question",
+        "correct": true,
+        "latencyMs": 583.1196
+      },
+      {
+        "query": "look up the geolocation of an IP address",
+        "top1": "get_location",
+        "correct": true,
+        "latencyMs": 654.9851999999992
+      },
+      {
+        "query": "calculate a child growth percentile",
+        "top1": "growth_percentile",
+        "correct": true,
+        "latencyMs": 599.4853999999996
+      },
+      {
+        "query": "get UN agricultural production statistics",
+        "top1": "faostat_list_domains",
+        "correct": true,
+        "latencyMs": 564.5308999999997
+      },
+      {
+        "query": "render and extract content from a web page",
+        "top1": "extract_content",
+        "correct": true,
+        "latencyMs": 649.9050000000007
+      }
+    ]
+  },
+  "searchToolsLatencyMs": {
+    "avg": 726,
+    "min": 565,
+    "max": 1424,
+    "note": "local CPU embedding model (Xenova/all-MiniLM-L6-v2), no GPU, no caching between calls"
+  }
+}
