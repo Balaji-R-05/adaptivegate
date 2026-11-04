@@ -21,7 +21,7 @@ interface UserToolRow {
 
 let apiKeyRows: Array<{ userId: string }> = [];
 let userToolRows: UserToolRow[] = [];
-let joinedServerUrlRows: Array<{ url: string }> = [];
+let joinedServerUrlRows: Array<{ url: string; auth: { type: 'none' } }> = [];
 
 vi.mock('@adaptivegate/db', () => ({
   apiKeys: apiKeysTable,
@@ -146,7 +146,7 @@ describe('/mcp', () => {
         inputSchema: { type: 'object', properties: { message: { type: 'string' } } },
       },
     ];
-    joinedServerUrlRows = [{ url: downstreamUrl }];
+    joinedServerUrlRows = [{ url: downstreamUrl, auth: { type: 'none' } }];
 
     const client = new Client({ name: 'test-client', version: '0.0.0' });
     const transport = new StreamableHTTPClientTransport(

@@ -52,7 +52,7 @@ serversRouter.post('/', async (c) => {
   // resync endpoint below lets the user retry.
   let syncError: string | undefined;
   try {
-    await syncToolsForServer({ id: row.id, userId, url: row.url });
+    await syncToolsForServer({ id: row.id, userId, url: row.url, auth: row.auth });
   } catch (error) {
     syncError = error instanceof Error ? error.message : 'failed to index tools';
   }
@@ -116,7 +116,12 @@ serversRouter.post('/:id/resync', async (c) => {
   }
 
   try {
-    const toolCount = await syncToolsForServer({ id: row.id, userId, url: row.url });
+    const toolCount = await syncToolsForServer({
+      id: row.id,
+      userId,
+      url: row.url,
+      auth: row.auth,
+    });
     return c.json({ toolCount });
   } catch (error) {
     return c.json({ error: error instanceof Error ? error.message : 'resync failed' }, 502);

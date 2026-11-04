@@ -1,5 +1,6 @@
 import { db, servers, toolEmbeddings } from '@adaptivegate/db';
 import { hybridRoute, type IndexedTool } from '@adaptivegate/router';
+import type { ServerAuth } from '@adaptivegate/shared';
 import { Server } from '@modelcontextprotocol/sdk/server/index.js';
 import { CallToolRequestSchema, ListToolsRequestSchema } from '@modelcontextprotocol/sdk/types.js';
 import { and, eq } from 'drizzle-orm';
@@ -36,15 +37,20 @@ async function loadUserTools(userId: string): Promise<UserTool[]> {
     .where(eq(toolEmbeddings.userId, userId));
 }
 
-async function findToolServerUrl(userId: string, toolName: string): Promise<string | null> {
+interface ToolServer {
+  url: string;
+  auth: ServerAuth;
+}
+
+async function findToolServer(userId: string, toolName: string): Promise<ToolServer | null> {
   const [row] = await db
-    .select({ url: servers.url })
+    .select({ url: servers.url, auth: servers.auth })
     .from(toolEmbeddings)
     .innerJoin(servers, eq(toolEmbeddings.serverId, servers.id))
     .where(and(eq(toolEmbeddings.userId, userId), eq(toolEmbeddings.toolName, toolName)))
     .limit(1);
 
-  return row?.url ?? null;
+  return row ?? null;
 }
 
 // The gateway always exposes exactly these two meta-tools, instead of
@@ -107,12 +113,12 @@ export function createGatewayServer(userId: string): Server {
 
     if (request.params.name === 'call_tool') {
       const input = callToolInput.parse(request.params.arguments);
-      const url = await findToolServerUrl(userId, input.name);
-      if (!url) {
+      const target = await findToolServer(userId, input.name);
+      if (!target) {
         throw new Error(`no tool named "${input.name}" found — call search_tools first`);
       }
 
-      const client = await connectDownstream(url);
+      const client = await connectDownstream(target.url, target.auth);
       try {
         return await callDownstreamTool(client, { name: input.name, arguments: input.arguments });
       } finally {

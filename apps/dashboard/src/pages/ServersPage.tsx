@@ -20,15 +20,24 @@ export function ServersPage() {
 
   const [name, setName] = useState('');
   const [url, setUrl] = useState('');
+  const [authType, setAuthType] = useState<'none' | 'bearer'>('none');
+  const [tokenEnv, setTokenEnv] = useState('');
   const [error, setError] = useState<string | null>(null);
 
   async function handleSubmit(event: FormEvent) {
     event.preventDefault();
     setError(null);
     try {
-      await createServer.mutateAsync({ name, url, auth: { type: 'none' }, enabledTools: [] });
+      await createServer.mutateAsync({
+        name,
+        url,
+        auth: authType === 'bearer' ? { type: 'bearer', tokenEnv } : { type: 'none' },
+        enabledTools: [],
+      });
       setName('');
       setUrl('');
+      setAuthType('none');
+      setTokenEnv('');
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to add server');
     }
@@ -62,6 +71,33 @@ export function ServersPage() {
             required
           />
         </label>
+        <label className="flex flex-col gap-1 text-sm text-slate-700">
+          Auth
+          <select
+            value={authType}
+            onChange={(event) => setAuthType(event.target.value as 'none' | 'bearer')}
+            className="rounded border border-slate-300 px-2 py-1"
+          >
+            <option value="none">None</option>
+            <option value="bearer">Bearer token</option>
+          </select>
+        </label>
+        {authType === 'bearer' && (
+          <label className="flex flex-col gap-1 text-sm text-slate-700">
+            Token env var name
+            <input
+              value={tokenEnv}
+              onChange={(event) => setTokenEnv(event.target.value)}
+              placeholder="GITHUB_MCP_TOKEN"
+              className="rounded border border-slate-300 px-2 py-1"
+              required
+            />
+            <span className="text-xs text-slate-500">
+              The actual token must already be set as this env var on the gateway server — it&apos;s
+              never sent to or stored by the dashboard.
+            </span>
+          </label>
+        )}
         {error && <p className="text-sm text-red-600">{error}</p>}
         <button
           type="submit"

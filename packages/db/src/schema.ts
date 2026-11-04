@@ -10,6 +10,7 @@ import {
   uuid,
   vector,
 } from 'drizzle-orm/pg-core';
+import type { ServerAuth } from '@adaptivegate/shared';
 
 // Dimensions for the local embedding model (Xenova/all-MiniLM-L6-v2) — if the
 // model ever changes, this (and a migration) need to change with it.
@@ -51,8 +52,7 @@ export const servers = pgTable('servers', {
     .references(() => users.id, { onDelete: 'cascade' }),
   name: text('name').notNull(),
   url: text('url').notNull(),
-  // Stores a `ServerAuth` discriminated union (see packages/shared).
-  auth: jsonb('auth').notNull(),
+  auth: jsonb('auth').notNull().$type<ServerAuth>(),
   enabledTools: jsonb('enabled_tools').notNull().default([]),
   createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
 });

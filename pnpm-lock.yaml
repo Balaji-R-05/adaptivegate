@@ -304,6 +304,9 @@ importers:
 
   packages/db:
     dependencies:
+      '@adaptivegate/shared':
+        specifier: workspace:*
+        version: link:../shared
       drizzle-orm:
         specifier: ^0.38.2
         version: 0.38.4(@types/react@18.3.31)(postgres@3.4.9)(react@18.3.1)

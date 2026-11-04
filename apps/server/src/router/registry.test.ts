@@ -49,6 +49,7 @@ describe('syncToolsForServer', () => {
       id: 'server-1',
       userId: 'user-1',
       url: 'http://x/mcp',
+      auth: { type: 'none' },
     });
 
     expect(count).toBe(2);
@@ -63,7 +64,12 @@ describe('syncToolsForServer', () => {
   });
 
   it('closes the downstream connection after syncing', async () => {
-    await syncToolsForServer({ id: 'server-1', userId: 'user-1', url: 'http://x/mcp' });
+    await syncToolsForServer({
+      id: 'server-1',
+      userId: 'user-1',
+      url: 'http://x/mcp',
+      auth: { type: 'none' },
+    });
     expect(closeMock).toHaveBeenCalledTimes(1);
   });
 });

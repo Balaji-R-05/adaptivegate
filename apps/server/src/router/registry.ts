@@ -1,4 +1,5 @@
 import { db, toolEmbeddings } from '@adaptivegate/db';
+import type { ServerAuth } from '@adaptivegate/shared';
 import { embedText, EMBEDDING_MODEL } from '../embeddings/embed';
 import { connectDownstream, listDownstreamTools } from '../mcp/downstreamClient';
 
@@ -6,13 +7,14 @@ interface ServerRef {
   id: string;
   userId: string;
   url: string;
+  auth: ServerAuth;
 }
 
 // Connects to one downstream server, embeds each of its tools, and
 // upserts them into tool_embeddings. Triggered right after a server is
 // created (src/api/servers.ts) and via the manual resync endpoint.
 export async function syncToolsForServer(server: ServerRef): Promise<number> {
-  const client = await connectDownstream(server.url);
+  const client = await connectDownstream(server.url, server.auth);
   let tools: Awaited<ReturnType<typeof listDownstreamTools>>['tools'];
   try {
     ({ tools } = await listDownstreamTools(client));
