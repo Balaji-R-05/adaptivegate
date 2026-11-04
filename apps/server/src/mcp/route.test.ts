@@ -60,29 +60,48 @@ vi.mock('../embeddings/embed', () => ({
 
 const { app } = await import('../app');
 
-let downstream: ReturnType<typeof serve>;
-let gateway: ReturnType<typeof serve>;
-let gatewayPort: number;
-let downstreamUrl: string;
-
-beforeAll(async () => {
-  const downstreamApp = new Hono();
-  downstreamApp.all('/mcp', async (c) => {
+function buildEchoFixture(prefix: string) {
+  const fixtureApp = new Hono();
+  fixtureApp.all('/mcp', async (c) => {
     const transport = new WebStandardStreamableHTTPServerTransport();
-    const server = new McpServer({ name: 'test-downstream', version: '0.0.0' });
+    const server = new McpServer({ name: `test-downstream-${prefix}`, version: '0.0.0' });
     server.registerTool(
       'echo',
       { title: 'Echo', description: 'echo', inputSchema: { message: z.string() } },
-      async ({ message }) => ({ content: [{ type: 'text' as const, text: message }] }),
+      async ({ message }) => ({
+        content: [{ type: 'text' as const, text: `${prefix}${message}` }],
+      }),
     );
     await server.connect(transport);
     return transport.handleRequest(c.req.raw);
   });
+  return fixtureApp;
+}
 
+let downstream: ReturnType<typeof serve>;
+let downstream2: ReturnType<typeof serve>;
+let gateway: ReturnType<typeof serve>;
+let gatewayPort: number;
+let downstreamUrl: string;
+let downstream2Url: string;
+
+beforeAll(async () => {
+  // Two separate downstream servers that both happen to expose a tool
+  // literally named "echo" — the same real-world situation that surfaced
+  // the serverId bug (see rrf.test.ts's regression test).
   const downstreamPort = await new Promise<number>((resolve) => {
-    downstream = serve({ fetch: downstreamApp.fetch, port: 0 }, (info) => resolve(info.port));
+    downstream = serve({ fetch: buildEchoFixture('').fetch, port: 0 }, (info) =>
+      resolve(info.port),
+    );
   });
   downstreamUrl = `http://localhost:${downstreamPort}/mcp`;
+
+  const downstream2Port = await new Promise<number>((resolve) => {
+    downstream2 = serve({ fetch: buildEchoFixture('SERVER-2: ').fetch, port: 0 }, (info) =>
+      resolve(info.port),
+    );
+  });
+  downstream2Url = `http://localhost:${downstream2Port}/mcp`;
 
   gatewayPort = await new Promise<number>((resolve) => {
     gateway = serve({ fetch: app.fetch, port: 0 }, (info) => resolve(info.port));
@@ -91,6 +110,7 @@ beforeAll(async () => {
 
 afterAll(() => {
   downstream.close();
+  downstream2.close();
   gateway.close();
 });
 
@@ -164,9 +184,52 @@ describe('/mcp', () => {
 
     const callResult = await client.callTool({
       name: 'call_tool',
-      arguments: { name: 'echo', arguments: { message: 'hello' } },
+      arguments: { name: 'echo', serverId: 'server-1', arguments: { message: 'hello' } },
     });
     expect(callResult.content).toEqual([{ type: 'text', text: 'hello' }]);
+
+    await client.close();
+  });
+
+  it('call_tool reaches the right server when two servers share a tool name', async () => {
+    apiKeyRows = [{ userId: 'user-1' }];
+    userToolRows = [
+      {
+        name: 'echo',
+        description: 'echo',
+        serverId: 'server-1',
+        embedding: [1, 0, 0],
+        inputSchema: {},
+      },
+      {
+        name: 'echo',
+        description: 'echo',
+        serverId: 'server-2',
+        embedding: [1, 0, 0],
+        inputSchema: {},
+      },
+    ];
+
+    const client = new Client({ name: 'test-client', version: '0.0.0' });
+    const transport = new StreamableHTTPClientTransport(
+      new URL(`http://localhost:${gatewayPort}/mcp`),
+      { requestInit: { headers: { Authorization: 'Bearer ag_test-key' } } },
+    );
+    await client.connect(transport);
+
+    joinedServerUrlRows = [{ url: downstreamUrl, auth: { type: 'none' } }];
+    const resultFromServer1 = await client.callTool({
+      name: 'call_tool',
+      arguments: { name: 'echo', serverId: 'server-1', arguments: { message: 'hi' } },
+    });
+    expect(resultFromServer1.content).toEqual([{ type: 'text', text: 'hi' }]);
+
+    joinedServerUrlRows = [{ url: downstream2Url, auth: { type: 'none' } }];
+    const resultFromServer2 = await client.callTool({
+      name: 'call_tool',
+      arguments: { name: 'echo', serverId: 'server-2', arguments: { message: 'hi' } },
+    });
+    expect(resultFromServer2.content).toEqual([{ type: 'text', text: 'SERVER-2: hi' }]);
 
     await client.close();
   });
@@ -182,7 +245,10 @@ describe('/mcp', () => {
     await client.connect(transport);
 
     await expect(
-      client.callTool({ name: 'call_tool', arguments: { name: 'nonexistent' } }),
+      client.callTool({
+        name: 'call_tool',
+        arguments: { name: 'nonexistent', serverId: 'server-1' },
+      }),
     ).rejects.toThrow();
 
     await client.close();

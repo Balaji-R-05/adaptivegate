@@ -21,7 +21,11 @@ export function embeddingRoute(
 ): RankedTool[] {
   return tools
     .filter((tool): tool is IndexedTool & { embedding: number[] } => tool.embedding !== undefined)
-    .map((tool) => ({ name: tool.name, score: cosineSimilarity(tool.embedding, queryEmbedding) }))
+    .map((tool) => ({
+      name: tool.name,
+      serverId: tool.serverId,
+      score: cosineSimilarity(tool.embedding, queryEmbedding),
+    }))
     .sort((a, b) => b.score - a.score)
     .slice(0, topK);
 }

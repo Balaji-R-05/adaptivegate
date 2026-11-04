@@ -15,8 +15,13 @@ const searchToolsInput = z.object({
   topK: z.number().int().positive().max(20).optional(),
 });
 
+// Tool names aren't unique across a user's different servers (two downstream
+// servers can genuinely both expose a tool called the same thing — seen for
+// real: two independent servers both had a `generate_qr`), so call_tool must
+// take the exact (serverId, name) pair search_tools returned, not name alone.
 const callToolInput = z.object({
   name: z.string().min(1),
+  serverId: z.string().min(1),
   arguments: z.record(z.string(), z.unknown()).optional(),
 });
 
@@ -42,12 +47,22 @@ interface ToolServer {
   auth: ServerAuth;
 }
 
-async function findToolServer(userId: string, toolName: string): Promise<ToolServer | null> {
+async function findToolServer(
+  userId: string,
+  serverId: string,
+  toolName: string,
+): Promise<ToolServer | null> {
   const [row] = await db
     .select({ url: servers.url, auth: servers.auth })
     .from(toolEmbeddings)
     .innerJoin(servers, eq(toolEmbeddings.serverId, servers.id))
-    .where(and(eq(toolEmbeddings.userId, userId), eq(toolEmbeddings.toolName, toolName)))
+    .where(
+      and(
+        eq(toolEmbeddings.userId, userId),
+        eq(toolEmbeddings.serverId, serverId),
+        eq(toolEmbeddings.toolName, toolName),
+      ),
+    )
     .limit(1);
 
   return row ?? null;
@@ -70,7 +85,7 @@ export function createGatewayServer(userId: string): Server {
       {
         name: 'search_tools',
         description:
-          'Search the tools available across your connected MCP servers. Call this first with a short natural-language description of what you need, then call call_tool with the matching tool name.',
+          'Search the tools available across your connected MCP servers. Call this first with a short natural-language description of what you need, then call call_tool with the matching name and serverId exactly as returned here.',
         inputSchema: {
           type: 'object',
           properties: {
@@ -82,14 +97,16 @@ export function createGatewayServer(userId: string): Server {
       },
       {
         name: 'call_tool',
-        description: 'Call a real tool found via search_tools, by its exact name.',
+        description:
+          'Call a real tool found via search_tools. name alone is not enough to identify it — two different servers can expose tools with the same name — so pass the exact name and serverId search_tools returned together.',
         inputSchema: {
           type: 'object',
           properties: {
             name: { type: 'string' },
+            serverId: { type: 'string' },
             arguments: { type: 'object' },
           },
-          required: ['name'],
+          required: ['name', 'serverId'],
         },
       },
     ],
@@ -102,10 +119,17 @@ export function createGatewayServer(userId: string): Server {
       const queryEmbedding = await embedText(input.query);
       const ranked = hybridRoute(tools, input.query, queryEmbedding, input.topK ?? DEFAULT_TOP_K);
 
-      const byName = new Map(tools.map((tool) => [tool.name, tool]));
+      // Keyed by (serverId, name) — matches the router's own identity, so a
+      // shared tool name across servers resolves to the right description.
+      const byKey = new Map(tools.map((tool) => [`${tool.serverId}:${tool.name}`, tool]));
       const results = ranked.map((match) => {
-        const tool = byName.get(match.name);
-        return { name: match.name, description: tool?.description, inputSchema: tool?.inputSchema };
+        const tool = byKey.get(`${match.serverId}:${match.name}`);
+        return {
+          name: match.name,
+          serverId: match.serverId,
+          description: tool?.description,
+          inputSchema: tool?.inputSchema,
+        };
       });
 
       return { content: [{ type: 'text', text: JSON.stringify(results, null, 2) }] };
@@ -113,9 +137,11 @@ export function createGatewayServer(userId: string): Server {
 
     if (request.params.name === 'call_tool') {
       const input = callToolInput.parse(request.params.arguments);
-      const target = await findToolServer(userId, input.name);
+      const target = await findToolServer(userId, input.serverId, input.name);
       if (!target) {
-        throw new Error(`no tool named "${input.name}" found — call search_tools first`);
+        throw new Error(
+          `no tool named "${input.name}" on server "${input.serverId}" — call search_tools first`,
+        );
       }
 
       const client = await connectDownstream(target.url, target.auth);

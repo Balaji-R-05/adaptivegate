@@ -10,5 +10,10 @@ export interface IndexedTool {
 
 export interface RankedTool {
   name: string;
+  // Tool names aren't unique across a user's different servers (two
+  // downstream servers can both happen to expose a tool called the same
+  // thing) — serverId is what actually identifies a result, so callers must
+  // key on (serverId, name), never name alone.
+  serverId: string;
   score: number;
 }
