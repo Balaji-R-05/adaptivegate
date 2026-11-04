@@ -123,18 +123,19 @@ pnpm benchmark           # run the governance attack benchmark
 - When adding experiments, save the config, policy and random seed used under `experiments/` so results are reproducible for the report and paper
 - Policy file format changes need a version bump and a migration note
 - Commit small and often with clear messages
-- Build in this order unless told otherwise (mirrors the README roadmap — keep both in sync):
-  1. Repo setup (monorepo, lint/format/CI) and shared Zod/Drizzle schemas
-  2. Supabase login with the invite allowlist
-  3. Minimal `/mcp` gateway proxying one server with hashed API-key auth
-  4. Dashboard Servers and Connect pages (first end-to-end loop with a real Claude Code client)
-  5. Hybrid router, then recovery policies
-  6. Event logging and the Overview page
-  7. Policy engine, budgets, identity and audit log
-  8. Approvals and live updates
-  9. Guards
-  10. Dry-run replay and scorecard
-  11. Failure injection and the attack benchmark
+- Build in this order unless told otherwise (mirrors the README roadmap — keep both in sync; marks the actual completion order so far):
+  1. Repo setup (monorepo, lint/format/CI) and shared Zod/Drizzle schemas — done
+  2. Supabase login (GitHub OAuth; invite allowlist still pending) — done
+  3. Minimal `/mcp` gateway proxying one server with hashed API-key auth — done
+  4. Dashboard Servers and Connect pages (first end-to-end loop with a real Claude Code client) — done
+  5. Hybrid router — done
+  6. Policy engine and hash-chained audit log — done
+  7. Recovery policies — done
+  8. Guards — done
+  9. Event logging and the Overview page
+  10. Budgets, identity and approvals resolution, with live updates
+  11. Dry-run replay and scorecard
+  12. Failure injection and the attack benchmark
 
 ## MVP Scope
 

@@ -1,6 +1,9 @@
 import { db, toolEmbeddings } from '@adaptivegate/db';
+import { hasToolDefinitionChanged } from '@adaptivegate/governance';
 import type { ServerAuth } from '@adaptivegate/shared';
+import { and, eq } from 'drizzle-orm';
 import { embedText, EMBEDDING_MODEL } from '../embeddings/embed';
+import { recordEvent } from '../governance/auditLog';
 import { connectDownstream, listDownstreamTools } from '../mcp/downstreamClient';
 
 interface ServerRef {
@@ -25,6 +28,30 @@ export async function syncToolsForServer(server: ServerRef): Promise<number> {
   for (const tool of tools) {
     const description = tool.description ?? '';
     const embedding = await embedText(`${tool.name}: ${description}`);
+
+    const [existing] = await db
+      .select({ description: toolEmbeddings.description, inputSchema: toolEmbeddings.inputSchema })
+      .from(toolEmbeddings)
+      .where(and(eq(toolEmbeddings.serverId, server.id), eq(toolEmbeddings.toolName, tool.name)))
+      .limit(1);
+
+    if (
+      existing &&
+      hasToolDefinitionChanged(
+        { description: existing.description, inputSchema: existing.inputSchema },
+        { description, inputSchema: tool.inputSchema },
+      )
+    ) {
+      await recordEvent({
+        userId: server.userId,
+        type: 'policy_decision',
+        payload: {
+          kind: 'tool_definition_changed',
+          tool: tool.name,
+          serverId: server.id,
+        },
+      });
+    }
 
     await db
       .insert(toolEmbeddings)

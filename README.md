@@ -255,18 +255,17 @@ Experiments run against a set of 5-10 real MCP servers (for example GitHub, file
 ## Roadmap
 
 - [x] Concept and first project review
-- [ ] Repo setup: MIT license, pnpm monorepo, TS/ESLint/Prettier config, Vitest + Playwright scaffolding, CI (lint, typecheck, test), `.env.example`, local Postgres + pgvector via `compose.yml`
-- [ ] Shared Zod schemas and Drizzle database schema (users, keys, servers, policies, events), with row-level security on every user-owned table
-- [ ] Supabase login (GitHub OAuth first) with invite allowlist enforced server-side
-- [ ] Minimal `/mcp` gateway (Streamable HTTP) with hashed API-key auth, outbound URL validation (SSRF guard) and per-user rate limiting, proxying one downstream server
-- [ ] Dashboard: Servers and Connect pages (first end-to-end loop with Claude Code)
-- [ ] Hybrid ToolGate router, benchmarked against BM25-only and embedding-only baselines
-- [ ] Recovery policies behind a common swappable interface, compared for success rate and added latency
-- [ ] Event logging and Overview charts
-- [ ] Policy engine (deterministic, side-effect-free, fail-closed), budgets/kill switch, agent identity scopes, policy packs and Policies page
-- [ ] Hash-chained, append-only audit log and Audit page
-- [ ] Approvals flow (dashboard and terminal) and live updates
-- [ ] Guards: secret/PII redaction, injection scanning, tool-definition pinning — each with a blocked-case and a benign-case test
+- [x] Repo setup: MIT license, pnpm monorepo, TS/ESLint/Prettier config, Vitest scaffolding, `.env.example`, local Postgres + pgvector via `compose.yml`
+- [x] Shared Zod schemas and Drizzle database schema (users, keys, servers, policies, events), with row-level security on every user-owned table
+- [x] Supabase login (GitHub OAuth) — invite allowlist still pending
+- [x] Minimal `/mcp` gateway (Streamable HTTP) with hashed API-key auth, outbound URL validation (SSRF guard), proxying downstream servers
+- [x] Dashboard: landing page, Servers and Connect pages (first end-to-end loop with Claude Code)
+- [x] Hybrid ToolGate router, benchmarked against BM25-only and embedding-only baselines
+- [x] Policy engine (deterministic, side-effect-free, fail-closed) and hash-chained, append-only audit log
+- [x] Recovery policies behind a common swappable interface (retry, fallback, escalate), compared for attempts/recovery
+- [x] Guards: secret/PII redaction, injection scanning, tool-definition pinning — each with a blocked-case and a benign-case test
+- [ ] Event logging dashboard: Overview charts (event recording itself already works)
+- [ ] Budgets/kill switch, agent identity scopes, policy packs, approvals flow (dashboard and terminal) and live updates
 - [ ] Dry-run replay and governance scorecard
 - [ ] Failure injection harness and governance attack benchmark
 - [ ] Live demo with Claude Code

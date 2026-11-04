@@ -3,10 +3,21 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 const toolEmbeddingsTable = { serverId: 'serverId', toolName: 'toolName' };
 
 let upsertedRows: Array<Record<string, unknown>> = [];
+// Consumed one entry per tool, in the order syncToolsForServer processes them
+// (same order listDownstreamTools returns: echo, then add) — each entry is
+// the "existing row" (or none) that tool's select should find.
+let existingRowsQueue: Array<Record<string, unknown>[]> = [];
 
 vi.mock('@adaptivegate/db', () => ({
   toolEmbeddings: toolEmbeddingsTable,
   db: {
+    select: () => ({
+      from: () => ({
+        where: () => ({
+          limit: () => Promise.resolve(existingRowsQueue.shift() ?? []),
+        }),
+      }),
+    }),
     insert: () => ({
       values: (values: Record<string, unknown>) => ({
         onConflictDoUpdate: () => {
@@ -16,6 +27,12 @@ vi.mock('@adaptivegate/db', () => ({
       }),
     }),
   },
+}));
+
+const recordEventMock = vi.fn();
+
+vi.mock('../governance/auditLog', () => ({
+  recordEvent: recordEventMock,
 }));
 
 const closeMock = vi.fn();
@@ -41,7 +58,9 @@ const { syncToolsForServer } = await import('./registry');
 describe('syncToolsForServer', () => {
   beforeEach(() => {
     upsertedRows = [];
+    existingRowsQueue = [];
     closeMock.mockClear();
+    recordEventMock.mockClear();
   });
 
   it('upserts one row per downstream tool, embedded', async () => {
@@ -71,5 +90,43 @@ describe('syncToolsForServer', () => {
       auth: { type: 'none' },
     });
     expect(closeMock).toHaveBeenCalledTimes(1);
+  });
+
+  it('logs a tool_definition_changed event when a resynced tool description changed', async () => {
+    existingRowsQueue = [
+      [{ description: 'an old, different description', inputSchema: { type: 'object' } }],
+      [{ description: 'adds two numbers', inputSchema: { type: 'object' } }],
+    ];
+
+    await syncToolsForServer({
+      id: 'server-1',
+      userId: 'user-1',
+      url: 'http://x/mcp',
+      auth: { type: 'none' },
+    });
+
+    const integrityEvents = recordEventMock.mock.calls.filter(
+      ([event]) => (event.payload as Record<string, unknown>).kind === 'tool_definition_changed',
+    );
+    expect(integrityEvents.length).toBeGreaterThan(0);
+  });
+
+  it('does not log a tool_definition_changed event when the definition is unchanged', async () => {
+    existingRowsQueue = [
+      [{ description: 'echoes input', inputSchema: { type: 'object' } }],
+      [{ description: 'adds two numbers', inputSchema: { type: 'object' } }],
+    ];
+
+    await syncToolsForServer({
+      id: 'server-1',
+      userId: 'user-1',
+      url: 'http://x/mcp',
+      auth: { type: 'none' },
+    });
+
+    const integrityEvents = recordEventMock.mock.calls.filter(
+      ([event]) => (event.payload as Record<string, unknown>).kind === 'tool_definition_changed',
+    );
+    expect(integrityEvents).toHaveLength(0);
   });
 });

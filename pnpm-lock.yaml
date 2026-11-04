@@ -251,6 +251,9 @@ importers:
       '@adaptivegate/governance':
         specifier: workspace:*
         version: link:../../packages/core/governance
+      '@adaptivegate/recovery':
+        specifier: workspace:*
+        version: link:../../packages/core/recovery
       '@adaptivegate/router':
         specifier: workspace:*
         version: link:../../packages/core/router
@@ -311,6 +314,8 @@ importers:
       '@types/js-yaml':
         specifier: ^4.0.9
         version: 4.0.9
+
+  packages/core/recovery: {}
 
   packages/core/router:
     dependencies:

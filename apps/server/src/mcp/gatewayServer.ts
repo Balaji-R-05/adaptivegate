@@ -1,14 +1,39 @@
 import { db, servers, toolEmbeddings } from '@adaptivegate/db';
+import { redactSecrets, scanForInjection } from '@adaptivegate/governance';
+import { retryPolicy } from '@adaptivegate/recovery';
 import { hybridRoute, type IndexedTool } from '@adaptivegate/router';
 import type { ServerAuth } from '@adaptivegate/shared';
 import { Server } from '@modelcontextprotocol/sdk/server/index.js';
-import { CallToolRequestSchema, ListToolsRequestSchema } from '@modelcontextprotocol/sdk/types.js';
+import {
+  CallToolRequestSchema,
+  ListToolsRequestSchema,
+  type CallToolResult,
+} from '@modelcontextprotocol/sdk/types.js';
 import { and, eq } from 'drizzle-orm';
 import { z } from 'zod';
 import { embedText } from '../embeddings/embed';
 import { recordEvent } from '../governance/auditLog';
 import { evaluateCallToolPolicy } from '../governance/policyEngine';
 import { callDownstreamTool, connectDownstream } from './downstreamClient';
+
+// Pulls every text block out of a tool call's input/output so guards (redaction,
+// injection scanning) can inspect it as one string without caring about shape.
+function extractText(value: unknown): string {
+  if (typeof value === 'string') return value;
+  if (Array.isArray(value)) return value.map(extractText).join(' ');
+  if (value && typeof value === 'object') {
+    return Object.values(value as Record<string, unknown>).map(extractText).join(' ');
+  }
+  return '';
+}
+
+// Redacts secrets/PII from a value before it's written to the audit log —
+// CLAUDE.md requires logs to be redacted, but the agent still gets the real,
+// unredacted result back.
+function redactForLog(value: unknown): { found: string[] } {
+  const { found } = redactSecrets(extractText(value));
+  return { found };
+}
 
 const DEFAULT_TOP_K = 5;
 
@@ -168,21 +193,61 @@ export function createGatewayServer(userId: string): Server {
         );
       }
 
-      const client = await connectDownstream(target.url, target.auth);
-      try {
-        const result = await callDownstreamTool(client, {
-          name: input.name,
-          arguments: input.arguments,
-        });
+      const { result, attempts, recovered } = await retryPolicy(
+        async () => {
+          const client = await connectDownstream(target.url, target.auth);
+          try {
+            return await callDownstreamTool(client, {
+              name: input.name,
+              arguments: input.arguments,
+            });
+          } finally {
+            await client.close();
+          }
+        },
+        { maxAttempts: 3, baseDelayMs: 200 },
+      ).run();
+
+      const injection = scanForInjection(extractText((result as CallToolResult).content));
+      if (injection.flagged) {
         await recordEvent({
           userId,
           type: 'tool_call',
-          payload: { tool: input.name, serverId: input.serverId, blocked: false },
+          payload: {
+            tool: input.name,
+            serverId: input.serverId,
+            blocked: true,
+            reason: 'injection_scan',
+            matches: injection.matches,
+          },
         });
-        return result;
-      } finally {
-        await client.close();
+        throw new Error(`blocked: downstream output flagged by injection scan (${input.name})`);
       }
+
+      const argsRedaction = redactForLog(input.arguments);
+      const outputRedaction = redactForLog((result as CallToolResult).content);
+      await recordEvent({
+        userId,
+        type: 'tool_call',
+        payload: {
+          tool: input.name,
+          serverId: input.serverId,
+          blocked: false,
+          attempts,
+          recovered,
+          redactedFields: [...argsRedaction.found, ...outputRedaction.found],
+        },
+      });
+
+      if (recovered) {
+        await recordEvent({
+          userId,
+          type: 'recovery_attempt',
+          payload: { tool: input.name, serverId: input.serverId, attempts },
+        });
+      }
+
+      return result;
     }
 
     throw new Error(

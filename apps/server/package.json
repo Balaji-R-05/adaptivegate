@@ -16,6 +16,7 @@
   "dependencies": {
     "@adaptivegate/db": "workspace:*",
     "@adaptivegate/governance": "workspace:*",
+    "@adaptivegate/recovery": "workspace:*",
     "@adaptivegate/router": "workspace:*",
     "@adaptivegate/shared": "workspace:*",
     "@hono/node-server": "^1.13.7",
