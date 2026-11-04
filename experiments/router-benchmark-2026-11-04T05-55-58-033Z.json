@@ -1,0 +1,26 @@
+{
+  "config": {
+    "embeddingModel": "Xenova/all-MiniLM-L6-v2",
+    "topK": 3,
+    "toolCount": 18,
+    "queryCount": 8
+  },
+  "note": "No randomness involved in this run — embedding model output is deterministic for fixed input, so there is no seed to record.",
+  "results": [
+    {
+      "mode": "bm25",
+      "top1Accuracy": 1,
+      "top3Accuracy": 1
+    },
+    {
+      "mode": "embedding",
+      "top1Accuracy": 1,
+      "top3Accuracy": 1
+    },
+    {
+      "mode": "hybrid",
+      "top1Accuracy": 1,
+      "top3Accuracy": 1
+    }
+  ]
+}

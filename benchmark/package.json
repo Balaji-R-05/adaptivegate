@@ -1,0 +1,17 @@
+{
+  "name": "@adaptivegate/benchmark",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "router": "tsx router/run.ts",
+    "typecheck": "tsc -p tsconfig.json --noEmit"
+  },
+  "dependencies": {
+    "@adaptivegate/router": "workspace:*",
+    "@huggingface/transformers": "^3.2.3"
+  },
+  "devDependencies": {
+    "tsx": "^4.19.2"
+  }
+}

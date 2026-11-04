@@ -3,6 +3,7 @@ import { createServerConfigInputSchema } from '@adaptivegate/shared';
 import { and, eq } from 'drizzle-orm';
 import { Hono } from 'hono';
 import { assertSafeDownstreamUrl, UnsafeDownstreamUrlError } from '../guards/ssrf';
+import { syncToolsForServer } from '../router/registry';
 
 export const serversRouter = new Hono();
 
@@ -41,7 +42,22 @@ serversRouter.post('/', async (c) => {
     .values({ ...parsed.data, userId })
     .returning();
 
-  return c.json(row, 201);
+  if (!row) {
+    return c.json({ error: 'failed to create server' }, 500);
+  }
+
+  // Index the new server's tools right away so search_tools can find them
+  // immediately. Best-effort: the server config is still created even if
+  // this fails (e.g. the downstream server is briefly unreachable) — the
+  // resync endpoint below lets the user retry.
+  let syncError: string | undefined;
+  try {
+    await syncToolsForServer({ id: row.id, userId, url: row.url });
+  } catch (error) {
+    syncError = error instanceof Error ? error.message : 'failed to index tools';
+  }
+
+  return c.json(syncError ? { ...row, syncError } : row, 201);
 });
 
 serversRouter.patch('/:id', async (c) => {
@@ -84,6 +100,27 @@ serversRouter.patch('/:id', async (c) => {
     return c.json({ error: 'not found' }, 404);
   }
   return c.json(row);
+});
+
+serversRouter.post('/:id/resync', async (c) => {
+  const userId = c.get('userId');
+  const id = c.req.param('id');
+
+  const [row] = await db
+    .select()
+    .from(servers)
+    .where(and(eq(servers.id, id), eq(servers.userId, userId)));
+
+  if (!row) {
+    return c.json({ error: 'not found' }, 404);
+  }
+
+  try {
+    const toolCount = await syncToolsForServer({ id: row.id, userId, url: row.url });
+    return c.json({ toolCount });
+  } catch (error) {
+    return c.json({ error: error instanceof Error ? error.message : 'resync failed' }, 502);
+  }
 });
 
 serversRouter.delete('/:id', async (c) => {

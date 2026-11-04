@@ -6,8 +6,14 @@ import {
   jsonb,
   text,
   timestamp,
+  unique,
   uuid,
+  vector,
 } from 'drizzle-orm/pg-core';
+
+// Dimensions for the local embedding model (Xenova/all-MiniLM-L6-v2) — if the
+// model ever changes, this (and a migration) need to change with it.
+export const EMBEDDING_DIMENSIONS = 384;
 
 // Mirrors packages/shared's Zod schemas 1:1 — one source of truth per entity,
 // just expressed twice (runtime validation vs. storage), as CLAUDE.md requires.
@@ -61,6 +67,28 @@ export const policies = pgTable('policies', {
   yaml: text('yaml').notNull(),
   createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
 });
+
+export const toolEmbeddings = pgTable(
+  'tool_embeddings',
+  {
+    id: uuid('id').primaryKey().defaultRandom(),
+    serverId: uuid('server_id')
+      .notNull()
+      .references(() => servers.id, { onDelete: 'cascade' }),
+    // Denormalized from servers.userId so every query can scope by user ID
+    // directly, per CLAUDE.md's convention, without an extra join.
+    userId: uuid('user_id')
+      .notNull()
+      .references(() => users.id, { onDelete: 'cascade' }),
+    toolName: text('tool_name').notNull(),
+    description: text('description').notNull(),
+    inputSchema: jsonb('input_schema').notNull(),
+    embedding: vector('embedding', { dimensions: EMBEDDING_DIMENSIONS }).notNull(),
+    embeddingModel: text('embedding_model').notNull(),
+    updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
+  },
+  (table) => [unique().on(table.serverId, table.toolName)],
+);
 
 export const eventType = pgEnum('event_type', [
   'tool_call',

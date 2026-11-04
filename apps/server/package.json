@@ -13,8 +13,10 @@
   },
   "dependencies": {
     "@adaptivegate/db": "workspace:*",
+    "@adaptivegate/router": "workspace:*",
     "@adaptivegate/shared": "workspace:*",
     "@hono/node-server": "^1.13.7",
+    "@huggingface/transformers": "^3.2.3",
     "@modelcontextprotocol/sdk": "^1.10.2",
     "@supabase/supabase-js": "^2.47.10",
     "drizzle-orm": "^0.38.2",

@@ -3,8 +3,8 @@ import { StreamableHTTPClientTransport } from '@modelcontextprotocol/sdk/client/
 import type { CallToolRequest } from '@modelcontextprotocol/sdk/types.js';
 
 // Wraps one downstream MCP server behind a plain connect/listTools/callTool
-// surface. Only proxies one server for now (no routing yet — that's the
-// hybrid router, build-order step 5).
+// surface. gatewayServer.ts decides which server to connect to for a given
+// tool, using the hybrid router's registry (packages/core/router).
 export async function connectDownstream(url: string): Promise<Client> {
   const client = new Client({ name: 'adaptivegate-gateway', version: '0.0.0' });
   const transport = new StreamableHTTPClientTransport(new URL(url));

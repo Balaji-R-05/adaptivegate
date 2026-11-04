@@ -1,6 +1,11 @@
 packages:
   - 'apps/*'
   - 'packages/*'
+  - 'packages/core/*'
+  - 'benchmark'
 
 allowBuilds:
   esbuild: true
+  onnxruntime-node: true
+  protobufjs: true
+  sharp: true

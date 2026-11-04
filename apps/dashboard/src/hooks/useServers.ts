@@ -25,3 +25,9 @@ export function useDeleteServer() {
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ['servers'] }),
   });
 }
+
+export function useResyncServer() {
+  return useMutation({
+    mutationFn: (id: string) => apiClient.post<{ toolCount: number }>(`/api/servers/${id}/resync`),
+  });
+}

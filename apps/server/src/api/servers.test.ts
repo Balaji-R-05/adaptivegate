@@ -23,6 +23,9 @@ vi.mock('@adaptivegate/db', () => ({
 
 vi.mock('drizzle-orm', () => ({ eq, and, isNull }));
 
+const syncToolsForServer = vi.fn(async () => 0);
+vi.mock('../router/registry', () => ({ syncToolsForServer }));
+
 const { serversRouter } = await import('./servers');
 
 function buildApp(userId: string) {
@@ -57,6 +60,7 @@ const userAServer: Row = {
 
 beforeEach(() => {
   tables = new Map([[serversTable, [{ ...userAServer }]]]);
+  syncToolsForServer.mockClear();
 });
 
 describe('GET /', () => {
@@ -117,6 +121,21 @@ describe('PATCH /:id', () => {
     });
     expect(res.status).toBe(200);
     expect((await jsonBody<ServerBody>(res)).name).toBe('renamed');
+  });
+});
+
+describe('POST /:id/resync', () => {
+  it("cannot resync another user's server", async () => {
+    const res = await buildApp('user-b').request('/server-a/resync', { method: 'POST' });
+    expect(res.status).toBe(404);
+    expect(syncToolsForServer).not.toHaveBeenCalled();
+  });
+
+  it("resyncs the owner's own server and reports the tool count", async () => {
+    syncToolsForServer.mockResolvedValueOnce(3);
+    const res = await buildApp('user-a').request('/server-a/resync', { method: 'POST' });
+    expect(res.status).toBe(200);
+    expect(await res.json()).toEqual({ toolCount: 3 });
   });
 });
 

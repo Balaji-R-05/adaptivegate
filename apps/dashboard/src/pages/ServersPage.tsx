@@ -1,10 +1,22 @@
 import { useState, type FormEvent } from 'react';
-import { useCreateServer, useDeleteServer, useServers } from '../hooks/useServers';
+import { useCreateServer, useDeleteServer, useResyncServer, useServers } from '../hooks/useServers';
 
 export function ServersPage() {
   const { data: serverList, isLoading } = useServers();
   const createServer = useCreateServer();
   const deleteServer = useDeleteServer();
+  const resyncServer = useResyncServer();
+  const [resyncMessage, setResyncMessage] = useState<string | null>(null);
+
+  async function handleResync(id: string) {
+    setResyncMessage(null);
+    try {
+      const result = await resyncServer.mutateAsync(id);
+      setResyncMessage(`Indexed ${result.toolCount} tool(s).`);
+    } catch (err) {
+      setResyncMessage(err instanceof Error ? err.message : 'Resync failed');
+    }
+  }
 
   const [name, setName] = useState('');
   const [url, setUrl] = useState('');
@@ -60,6 +72,8 @@ export function ServersPage() {
         </button>
       </form>
 
+      {resyncMessage && <p className="mb-2 text-sm text-slate-600">{resyncMessage}</p>}
+
       {isLoading ? (
         <p className="text-slate-500">Loading…</p>
       ) : serverList && serverList.length > 0 ? (
@@ -73,13 +87,23 @@ export function ServersPage() {
                 <p className="font-medium text-slate-900">{server.name}</p>
                 <p className="text-sm text-slate-500">{server.url}</p>
               </div>
-              <button
-                type="button"
-                onClick={() => deleteServer.mutate(server.id)}
-                className="text-sm text-red-600"
-              >
-                Remove
-              </button>
+              <div className="flex items-center gap-3">
+                <button
+                  type="button"
+                  onClick={() => handleResync(server.id)}
+                  disabled={resyncServer.isPending}
+                  className="text-sm text-slate-600 disabled:opacity-50"
+                >
+                  Resync
+                </button>
+                <button
+                  type="button"
+                  onClick={() => deleteServer.mutate(server.id)}
+                  className="text-sm text-red-600"
+                >
+                  Remove
+                </button>
+              </div>
             </li>
           ))}
         </ul>
