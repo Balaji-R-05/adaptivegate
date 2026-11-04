@@ -4,6 +4,7 @@ import { useSession } from './hooks/useSession';
 import { supabase } from './lib/supabase';
 import { ConnectPage } from './pages/ConnectPage';
 import { LandingPage } from './pages/LandingPage';
+import { OverviewPage } from './pages/OverviewPage';
 import { ServersPage } from './pages/ServersPage';
 
 const queryClient = new QueryClient();
@@ -23,6 +24,7 @@ function SignedInShell({ email }: { email: string | undefined }) {
         <div className="flex items-center gap-6">
           <span className="text-lg font-semibold text-slate-900">AdaptiveGate</span>
           <nav className="flex gap-4 text-sm text-slate-600">
+            <Link to="/overview">Overview</Link>
             <Link to="/servers">Servers</Link>
             <Link to="/connect">Connect</Link>
           </nav>
@@ -39,9 +41,10 @@ function SignedInShell({ email }: { email: string | undefined }) {
         </div>
       </header>
       <Routes>
+        <Route path="/overview" element={<OverviewPage />} />
         <Route path="/servers" element={<ServersPage />} />
         <Route path="/connect" element={<ConnectPage />} />
-        <Route path="*" element={<Navigate to="/servers" replace />} />
+        <Route path="*" element={<Navigate to="/overview" replace />} />
       </Routes>
     </div>
   );

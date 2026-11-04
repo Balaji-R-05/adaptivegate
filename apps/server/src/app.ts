@@ -1,5 +1,6 @@
 import { Hono } from 'hono';
 import { apiKeysRouter } from './api/apiKeys';
+import { eventsRouter } from './api/events';
 import { policiesRouter } from './api/policies';
 import { serversRouter } from './api/servers';
 import { requireUser } from './auth/supabaseAuth';
@@ -19,3 +20,4 @@ app.use('/api/*', requireUser);
 app.route('/api/servers', serversRouter);
 app.route('/api/keys', apiKeysRouter);
 app.route('/api/policies', policiesRouter);
+app.route('/api/events', eventsRouter);

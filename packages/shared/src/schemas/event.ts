@@ -21,3 +21,22 @@ export const eventSchema = z.object({
 });
 
 export type Event = z.infer<typeof eventSchema>;
+
+// Query params for GET /api/events — all optional, same validate-at-the-
+// boundary convention as the rest of packages/shared.
+export const listEventsQuerySchema = z.object({
+  type: eventTypeSchema.optional(),
+  before: z.coerce.date().optional(),
+  limit: z.coerce.number().int().min(1).max(200).default(50),
+});
+
+export type ListEventsQuery = z.infer<typeof listEventsQuerySchema>;
+
+export const eventStatsSchema = z.object({
+  total: z.number().int().nonnegative(),
+  byType: z.record(eventTypeSchema, z.number().int().nonnegative()),
+  blocked: z.number().int().nonnegative(),
+  recovered: z.number().int().nonnegative(),
+});
+
+export type EventStats = z.infer<typeof eventStatsSchema>;
