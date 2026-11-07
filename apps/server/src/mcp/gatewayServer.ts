@@ -17,7 +17,8 @@ import { findOrCreatePendingApproval, findUnconsumedApproval } from '../governan
 import { recordEvent } from '../governance/auditLog';
 import { checkBudget } from '../governance/budgets';
 import { evaluateCallToolPolicy } from '../governance/policyEngine';
-import { callDownstreamTool, connectDownstream } from './downstreamClient';
+import { callDownstreamTool } from './downstreamClient';
+import { evictConnection, getPooledConnection } from './downstreamPool';
 
 // Pulls every text block out of a tool call's input/output so guards (redaction,
 // injection scanning) can inspect it as one string without caring about shape.
@@ -239,14 +240,16 @@ export function createGatewayServer(userId: string, identity?: VerifiedIdentity)
 
       const { result, attempts, recovered } = await retryPolicy(
         async () => {
-          const client = await connectDownstream(target.url, target.auth);
+          const client = await getPooledConnection(input.serverId, target.url, target.auth);
           try {
             return await callDownstreamTool(client, {
               name: input.name,
               arguments: input.arguments,
             });
-          } finally {
-            await client.close();
+          } catch (error) {
+            // Broken connection — don't let retryPolicy's next attempt reuse it.
+            await evictConnection(input.serverId, target.url, target.auth);
+            throw error;
           }
         },
         { maxAttempts: 3, baseDelayMs: 200 },

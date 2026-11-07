@@ -3,6 +3,7 @@ import { createServerConfigInputSchema } from '@adaptivegate/shared';
 import { and, eq } from 'drizzle-orm';
 import { Hono } from 'hono';
 import { assertSafeDownstreamUrl, UnsafeDownstreamUrlError } from '../guards/ssrf';
+import { evictConnection } from '../mcp/downstreamPool';
 import { syncToolsForServer } from '../router/registry';
 
 export const serversRouter = new Hono();
@@ -87,6 +88,15 @@ serversRouter.patch('/:id', async (c) => {
     }
   }
 
+  // Fetched before updating so a changed url/auth can evict the *old* pooled
+  // connection — the pool is keyed on (serverId, url, auth.type), so this is
+  // memory hygiene, not a correctness requirement (a stale key just never
+  // gets looked up again), but it avoids leaving it open indefinitely.
+  const [existing] = await db
+    .select({ url: servers.url, auth: servers.auth })
+    .from(servers)
+    .where(and(eq(servers.id, id), eq(servers.userId, userId)));
+
   // Scoping the WHERE by userId (not just id) is what stops one user from
   // editing another user's server — see CLAUDE.md's "scope every database
   // query by user ID" convention.
@@ -99,6 +109,11 @@ serversRouter.patch('/:id', async (c) => {
   if (!row) {
     return c.json({ error: 'not found' }, 404);
   }
+
+  if (existing) {
+    await evictConnection(id, existing.url, existing.auth);
+  }
+
   return c.json(row);
 });
 
@@ -140,5 +155,8 @@ serversRouter.delete('/:id', async (c) => {
   if (!row) {
     return c.json({ error: 'not found' }, 404);
   }
+
+  await evictConnection(id, row.url, row.auth);
+
   return c.body(null, 204);
 });

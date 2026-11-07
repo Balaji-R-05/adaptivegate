@@ -626,4 +626,33 @@ describe('/mcp', () => {
 
     await client.close();
   });
+
+  it('call_tool succeeds on a second consecutive call to the same server (reused connection)', async () => {
+    apiKeyRows = [{ userId: 'user-1' }];
+    userToolRows = [
+      { name: 'echo', description: 'echo', serverId: 'server-1', embedding: [1, 0, 0], inputSchema: {} },
+    ];
+    joinedServerUrlRows = [{ url: downstreamUrl, auth: { type: 'none' } }];
+
+    const client = new Client({ name: 'test-client', version: '0.0.0' });
+    const transport = new StreamableHTTPClientTransport(
+      new URL(`http://localhost:${gatewayPort}/mcp`),
+      { requestInit: { headers: { Authorization: 'Bearer ag_test-key' } } },
+    );
+    await client.connect(transport);
+
+    const first = await client.callTool({
+      name: 'call_tool',
+      arguments: { name: 'echo', serverId: 'server-1', arguments: { message: 'one' } },
+    });
+    expect(first.content).toEqual([{ type: 'text', text: 'one' }]);
+
+    const second = await client.callTool({
+      name: 'call_tool',
+      arguments: { name: 'echo', serverId: 'server-1', arguments: { message: 'two' } },
+    });
+    expect(second.content).toEqual([{ type: 'text', text: 'two' }]);
+
+    await client.close();
+  });
 });
