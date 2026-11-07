@@ -3,3 +3,4 @@ export * from './audit';
 export * from './guards';
 export * from './budgets';
 export * from './approvals';
+export * from './replay';

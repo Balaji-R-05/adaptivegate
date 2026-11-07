@@ -5,3 +5,4 @@ export * from './schemas/policy';
 export * from './schemas/event';
 export * from './schemas/identity';
 export * from './schemas/approval';
+export * from './schemas/replayLog';

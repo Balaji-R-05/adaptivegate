@@ -1,0 +1,15 @@
+# Example stricter policy for `pnpm replay` to dry-run against a real
+# session log (see apps/server/scripts/exportSessionLog.ts). Denies
+# filesystem deletes outright and requires approval for anything that
+# creates something on GitHub; everything else falls through to the
+# default allow (see packages/core/governance/src/policy/evaluate.ts).
+version: 1
+rules:
+  - name: no-deletes
+    match:
+      tool: 'filesystem.delete_*'
+    action: deny
+  - name: approve-github-writes
+    match:
+      tool: 'github.create_*'
+    action: require_approval

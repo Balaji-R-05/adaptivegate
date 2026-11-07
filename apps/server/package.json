@@ -11,7 +11,9 @@
     "seed": "tsx --env-file=../../.env scripts/seed.ts",
     "create-policy": "tsx --env-file=../../.env scripts/createPolicy.ts",
     "fixture:downstream": "tsx fixtures/downstreamServer.ts",
-    "evaluate:live-catalog": "tsx --env-file=../../.env scripts/evaluateLiveCatalog.ts"
+    "evaluate:live-catalog": "tsx --env-file=../../.env scripts/evaluateLiveCatalog.ts",
+    "export-log": "tsx --env-file=../../.env scripts/exportSessionLog.ts",
+    "replay": "tsx scripts/replay.ts"
   },
   "dependencies": {
     "@adaptivegate/db": "workspace:*",
