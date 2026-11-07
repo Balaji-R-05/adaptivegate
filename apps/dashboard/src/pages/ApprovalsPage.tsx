@@ -14,8 +14,12 @@ function formatCountdown(ms: number): string {
   return `${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}`;
 }
 
-function formatRelativeTime(date: Date, now: Date): string {
-  const diffMs = now.getTime() - date.getTime();
+// `date` is typed Date (via the shared Approval schema's z.coerce.date()),
+// but apiClient.get() never actually runs responses through Zod, so it's a
+// raw JSON string at runtime — wrap with new Date(...) rather than trust
+// the type (see PoliciesPage's identical bug/fix for the full story).
+function formatRelativeTime(date: Date | string, now: Date): string {
+  const diffMs = now.getTime() - new Date(date).getTime();
   const minutes = Math.floor(diffMs / 60000);
   if (minutes < 1) return 'just now';
   if (minutes < 60) return `${minutes}m ago`;
@@ -36,7 +40,7 @@ function PendingCard({
   onToggleSelect: (id: string) => void;
 }) {
   const resolve = useResolveApproval();
-  const remainingMs = approval.expiresAt.getTime() - now.getTime();
+  const remainingMs = new Date(approval.expiresAt).getTime() - now.getTime();
 
   return (
     <div className="relative overflow-hidden rounded-xl bg-surface-container-lowest shadow-sm transition-shadow hover:shadow-md">
@@ -207,11 +211,12 @@ export function ApprovalsPage() {
   }, []);
 
   const pending = (approvalList?.filter((a) => a.status === 'pending' && !a.isExpired) ?? []).sort(
-    (a, b) => a.expiresAt.getTime() - b.expiresAt.getTime(),
+    (a, b) => new Date(a.expiresAt).getTime() - new Date(b.expiresAt).getTime(),
   );
   const expired = approvalList?.filter((a) => a.status === 'pending' && a.isExpired) ?? [];
   const resolved = (approvalList?.filter((a) => a.status !== 'pending') ?? []).sort(
-    (a, b) => (b.decidedAt?.getTime() ?? 0) - (a.decidedAt?.getTime() ?? 0),
+    (a, b) =>
+      (b.decidedAt ? new Date(b.decidedAt).getTime() : 0) - (a.decidedAt ? new Date(a.decidedAt).getTime() : 0),
   );
 
   function toggleSelect(id: string) {
