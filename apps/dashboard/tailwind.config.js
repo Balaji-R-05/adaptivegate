@@ -1,8 +1,65 @@
 /** @type {import('tailwindcss').Config} */
+// Color/font/rounded/spacing tokens ported from the Stitch export's
+// adaptivegate_design_system/DESIGN.md (light-mode theme, the only one this
+// app ships — see the implementation plan for why).
 export default {
   content: ['./index.html', './src/**/*.{ts,tsx}'],
   theme: {
-    extend: {},
+    extend: {
+      colors: {
+        surface: '#faf8ff',
+        'surface-dim': '#d2d9f4',
+        'surface-bright': '#faf8ff',
+        'surface-container-lowest': '#ffffff',
+        'surface-container-low': '#f2f3ff',
+        'surface-container': '#eaedff',
+        'surface-container-high': '#e2e7ff',
+        'surface-container-highest': '#dae2fd',
+        'on-surface': '#131b2e',
+        'on-surface-variant': '#464555',
+        'inverse-surface': '#283044',
+        'inverse-on-surface': '#eef0ff',
+        outline: '#777587',
+        'outline-variant': '#c7c4d8',
+        primary: '#3525cd',
+        'on-primary': '#ffffff',
+        'primary-container': '#4f46e5',
+        'on-primary-container': '#dad7ff',
+        secondary: '#0058be',
+        'on-secondary': '#ffffff',
+        'secondary-container': '#2170e4',
+        'on-secondary-container': '#fefcff',
+        tertiary: '#005338',
+        'on-tertiary': '#ffffff',
+        'tertiary-container': '#006e4b',
+        'on-tertiary-container': '#67f4b7',
+        error: '#ba1a1a',
+        'on-error': '#ffffff',
+        'error-container': '#ffdad6',
+        'on-error-container': '#93000a',
+        background: '#faf8ff',
+        'on-background': '#131b2e',
+      },
+      fontFamily: {
+        sans: ['Inter', 'ui-sans-serif', 'system-ui', 'sans-serif'],
+        mono: ['"JetBrains Mono"', 'ui-monospace', 'SFMono-Regular', 'monospace'],
+      },
+      borderRadius: {
+        xl: '0.75rem',
+      },
+      spacing: {
+        gutter: '1rem',
+        'gutter-md': '1.5rem',
+        'space-xxs': '0.125rem',
+        'space-xs': '0.25rem',
+        'space-sm': '0.5rem',
+        'space-md': '0.75rem',
+        'space-base': '1rem',
+        'space-lg': '1.5rem',
+        'space-xl': '2rem',
+        'space-2xl': '3rem',
+      },
+    },
   },
   plugins: [],
 };

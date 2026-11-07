@@ -1,4 +1,6 @@
 import { useState, type FormEvent } from 'react';
+import { Card } from '../components/Card';
+import { Icon } from '../components/Icon';
 import { useApiKeys, useCreateApiKey, useRevokeApiKey } from '../hooks/useApiKeys';
 
 const GATEWAY_URL = import.meta.env.VITE_GATEWAY_URL;
@@ -19,71 +21,71 @@ export function ConnectPage() {
   }
 
   return (
-    <section className="mx-auto max-w-2xl p-6">
-      <h2 className="mb-4 text-xl font-semibold text-slate-900">Connect</h2>
+    <div className="mx-auto flex max-w-3xl flex-col gap-space-lg px-gutter-md py-space-lg">
+      <h1 className="font-sans text-2xl font-semibold tracking-tight text-on-surface">Connect</h1>
 
-      <form onSubmit={handleCreate} className="mb-4 flex items-end gap-2">
-        <label className="flex flex-col gap-1 text-sm text-slate-700">
-          Key label
-          <input
-            value={label}
-            onChange={(event) => setLabel(event.target.value)}
-            placeholder="laptop"
-            className="rounded border border-slate-300 px-2 py-1"
-            required
-          />
-        </label>
-        <button
-          type="submit"
-          disabled={createKey.isPending}
-          className="rounded bg-slate-900 px-4 py-2 text-white disabled:opacity-50"
-        >
-          Create key
-        </button>
-      </form>
+      <Card>
+        <form onSubmit={handleCreate} className="flex items-end gap-space-sm">
+          <label className="flex flex-1 flex-col gap-1 text-sm text-on-surface-variant">
+            Key label
+            <input
+              value={label}
+              onChange={(event) => setLabel(event.target.value)}
+              placeholder="laptop"
+              className="rounded border border-outline-variant px-space-sm py-space-xs"
+              required
+            />
+          </label>
+          <button
+            type="submit"
+            disabled={createKey.isPending}
+            className="rounded bg-primary px-space-md py-space-xs text-sm font-medium text-on-primary disabled:opacity-50"
+          >
+            Create key
+          </button>
+        </form>
+      </Card>
 
       {justCreatedKey && (
-        <div className="mb-6 rounded border border-amber-300 bg-amber-50 p-4">
-          <p className="mb-2 text-sm text-amber-900">
+        <Card className="border-amber-300 bg-amber-50">
+          <p className="mb-space-sm flex items-center gap-1 text-sm font-medium text-amber-900">
+            <Icon name="visibility" className="text-[16px]" />
             This key is shown once — copy it now, it can&apos;t be retrieved again.
           </p>
-          <code className="block break-all rounded bg-white px-2 py-1 text-sm">
+          <code className="block break-all rounded bg-white px-space-sm py-space-xs font-mono text-sm">
             {justCreatedKey}
           </code>
-          <pre className="mt-2 overflow-x-auto rounded bg-slate-900 p-3 text-xs text-slate-100">
+          <pre className="mt-space-sm overflow-x-auto rounded-xl bg-inverse-surface p-space-sm font-mono text-xs text-inverse-on-surface shadow-inner">
             {`claude mcp add --transport http adaptivegate ${GATEWAY_URL}/mcp \\\n  --header "Authorization: Bearer ${justCreatedKey}"`}
           </pre>
-        </div>
+        </Card>
       )}
 
       {isLoading ? (
-        <p className="text-slate-500">Loading…</p>
+        <p className="text-on-surface-variant">Loading…</p>
       ) : keys && keys.length > 0 ? (
-        <ul className="flex flex-col gap-2">
+        <div className="flex flex-col gap-space-sm">
           {keys.map((key) => (
-            <li
-              key={key.id}
-              className="flex items-center justify-between rounded border border-slate-200 px-4 py-2"
-            >
+            <Card key={key.id} className="flex items-center justify-between">
               <div>
-                <p className="font-medium text-slate-900">{key.label}</p>
-                <p className="text-sm text-slate-500">{key.revokedAt ? 'Revoked' : 'Active'}</p>
+                <p className="font-medium text-on-surface">{key.label}</p>
+                <p className="text-sm text-on-surface-variant">{key.revokedAt ? 'Revoked' : 'Active'}</p>
               </div>
               {!key.revokedAt && (
                 <button
                   type="button"
                   onClick={() => revokeKey.mutate(key.id)}
-                  className="text-sm text-red-600"
+                  className="text-sm text-error"
                 >
                   Revoke
                 </button>
               )}
-            </li>
+            </Card>
           ))}
-        </ul>
+        </div>
       ) : (
-        <p className="text-slate-500">No API keys yet.</p>
+        <p className="text-on-surface-variant">No API keys yet.</p>
       )}
-    </section>
+    </div>
   );
 }

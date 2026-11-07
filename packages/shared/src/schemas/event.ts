@@ -17,6 +17,12 @@ export const eventSchema = z.object({
   userId: z.string().uuid(),
   type: eventTypeSchema,
   payload: z.record(z.string(), z.unknown()),
+  // Part of the hash chain (packages/core/governance/src/audit/hashChain.ts)
+  // — the Audit page displays these, but nothing should recompute a hash
+  // client-side; GET /api/events/verify is the only source of truth for
+  // whether the chain is intact.
+  hash: z.string(),
+  previousHash: z.string().nullable(),
   createdAt: z.coerce.date(),
 });
 

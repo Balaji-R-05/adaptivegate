@@ -1,5 +1,5 @@
 import type { Event, EventStats, EventType } from '@adaptivegate/shared';
-import { useQuery } from '@tanstack/react-query';
+import { useMutation, useQuery } from '@tanstack/react-query';
 import { apiClient } from '../lib/apiClient';
 
 export function useEventStats() {
@@ -22,5 +22,11 @@ export function useEvents(filters: EventFilters) {
   return useQuery({
     queryKey: ['events', filters],
     queryFn: () => apiClient.get<Event[]>(`/api/events?${params.toString()}`),
+  });
+}
+
+export function useVerifyChain() {
+  return useMutation({
+    mutationFn: () => apiClient.get<{ valid: boolean; eventCount: number }>('/api/events/verify'),
   });
 }
