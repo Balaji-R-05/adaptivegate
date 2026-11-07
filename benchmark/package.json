@@ -5,9 +5,13 @@
   "type": "module",
   "scripts": {
     "router": "tsx router/run.ts",
+    "governance": "tsx governance/run.ts",
+    "recovery": "tsx recovery/run.ts",
     "typecheck": "tsc -p tsconfig.json --noEmit"
   },
   "dependencies": {
+    "@adaptivegate/governance": "workspace:*",
+    "@adaptivegate/recovery": "workspace:*",
     "@adaptivegate/router": "workspace:*",
     "@huggingface/transformers": "^3.2.3"
   },

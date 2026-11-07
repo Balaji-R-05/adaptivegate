@@ -14,7 +14,8 @@
     "typecheck": "pnpm -r run typecheck",
     "format": "prettier --write .",
     "db:generate": "pnpm --filter @adaptivegate/db run db:generate",
-    "db:migrate": "pnpm --filter @adaptivegate/db run db:migrate"
+    "db:migrate": "pnpm --filter @adaptivegate/db run db:migrate",
+    "benchmark": "pnpm --filter @adaptivegate/benchmark run governance && pnpm --filter @adaptivegate/benchmark run recovery"
   },
   "devDependencies": {
     "@eslint/js": "^9.17.0",

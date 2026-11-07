@@ -291,6 +291,12 @@ importers:
 
   benchmark:
     dependencies:
+      '@adaptivegate/governance':
+        specifier: workspace:*
+        version: link:../packages/core/governance
+      '@adaptivegate/recovery':
+        specifier: workspace:*
+        version: link:../packages/core/recovery
       '@adaptivegate/router':
         specifier: workspace:*
         version: link:../packages/core/router

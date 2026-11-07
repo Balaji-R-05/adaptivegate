@@ -3,5 +3,5 @@
   "compilerOptions": {
     "noEmit": true
   },
-  "include": ["router"]
+  "include": ["router", "governance", "recovery"]
 }
