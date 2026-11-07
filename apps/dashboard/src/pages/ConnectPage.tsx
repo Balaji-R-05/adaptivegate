@@ -209,7 +209,7 @@ export function ConnectPage() {
               : 'Create a key above to have it filled in here automatically.'}
           </p>
           <div className="mt-space-sm flex items-center gap-space-xs overflow-x-auto pt-space-xs">
-            {(['claude', 'curl'] as const).map((tab) => (
+            {(['claude', 'codex', 'curl'] as const).map((tab) => (
               <button
                 key={tab}
                 type="button"
@@ -220,8 +220,11 @@ export function ConnectPage() {
                     : 'bg-surface-container-low text-on-surface-variant hover:bg-surface-container'
                 }`}
               >
-                <Icon name={tab === 'claude' ? 'smart_toy' : 'code'} className="text-[16px]" />
-                {tab === 'claude' ? 'Claude Code CLI' : 'curl (generic MCP client)'}
+                <Icon
+                  name={tab === 'claude' ? 'smart_toy' : tab === 'codex' ? 'terminal' : 'code'}
+                  className="text-[16px]"
+                />
+                {tab === 'claude' ? 'Claude Code CLI' : tab === 'codex' ? 'Codex CLI' : 'curl (generic MCP client)'}
               </button>
             ))}
           </div>
@@ -237,6 +240,15 @@ export function ConnectPage() {
             aliased to <code>Invoke-WebRequest</code> there, which parses <code>-H</code>{' '}
             differently and will fail. Run <code>curl.exe</code> instead of <code>curl</code> to
             use the real curl.
+          </p>
+        )}
+        {snippetTab === 'codex' && (
+          <p className="border-t border-outline-variant/30 bg-surface-container-low px-space-lg py-space-sm text-xs text-on-surface-variant">
+            <strong className="text-on-surface">Windows PowerShell:</strong> replace the first line
+            with <code>$env:ADAPTIVEGATE_API_KEY = "..."</code> — <code>export</code> is bash/zsh
+            syntax and won't work there. Codex has no header option, only{' '}
+            <code>--bearer-token-env-var</code>, so the key has to go through an environment
+            variable rather than the command itself.
           </p>
         )}
       </Card>

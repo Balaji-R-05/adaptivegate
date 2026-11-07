@@ -383,7 +383,7 @@ export function IdentitiesPage() {
               </span>
               <div className="flex items-center gap-space-xs">
                 <div className="flex items-center gap-space-xxs">
-                  {(['claude', 'curl'] as const).map((tab) => (
+                  {(['claude', 'codex', 'curl'] as const).map((tab) => (
                     <button
                       key={tab}
                       type="button"
@@ -394,7 +394,7 @@ export function IdentitiesPage() {
                           : 'bg-surface-container-low text-on-surface-variant hover:bg-surface-container'
                       }`}
                     >
-                      {tab === 'claude' ? 'Claude Code' : 'curl'}
+                      {tab === 'claude' ? 'Claude Code' : tab === 'codex' ? 'Codex' : 'curl'}
                     </button>
                   ))}
                 </div>
@@ -417,6 +417,13 @@ export function IdentitiesPage() {
                 {connectSnippet(snippetTab, justCreated.key)}
               </pre>
             </div>
+            {snippetTab === 'codex' && (
+              <p className="text-[11px] text-on-surface-variant">
+                Windows PowerShell: use <code>$env:ADAPTIVEGATE_API_KEY = "..."</code> instead of
+                the first line — Codex only takes the key via an environment variable, not a
+                header.
+              </p>
+            )}
           </div>
         </Card>
       )}
