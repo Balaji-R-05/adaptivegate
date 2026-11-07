@@ -277,7 +277,7 @@ describe('/mcp', () => {
     expect(res.status).toBe(401);
   });
 
-  it('always exposes exactly search_tools and call_tool', async () => {
+  it('always exposes exactly search_tools, call_tool and check_policy', async () => {
     apiKeyRows = [{ userId: 'user-1' }];
 
     const client = new Client({ name: 'test-client', version: '0.0.0' });
@@ -288,7 +288,7 @@ describe('/mcp', () => {
     await client.connect(transport);
 
     const { tools } = await client.listTools();
-    expect(tools.map((tool) => tool.name).sort()).toEqual(['call_tool', 'search_tools']);
+    expect(tools.map((tool) => tool.name).sort()).toEqual(['call_tool', 'check_policy', 'search_tools']);
 
     await client.close();
   });
@@ -654,5 +654,68 @@ describe('/mcp', () => {
     expect(second.content).toEqual([{ type: 'text', text: 'two' }]);
 
     await client.close();
+  });
+
+  describe('check_policy', () => {
+    async function checkPolicy(args: { name: string; serverId: string }) {
+      const client = new Client({ name: 'test-client', version: '0.0.0' });
+      const transport = new StreamableHTTPClientTransport(
+        new URL(`http://localhost:${gatewayPort}/mcp`),
+        { requestInit: { headers: { Authorization: 'Bearer ag_test-key' } } },
+      );
+      await client.connect(transport);
+      const result = await client.callTool({ name: 'check_policy', arguments: args });
+      await client.close();
+      const text = (result.content as Array<{ type: string; text: string }>)[0]?.text ?? '{}';
+      return JSON.parse(text) as { action: string; reason?: string };
+    }
+
+    it('reports allow without actually calling the downstream server', async () => {
+      apiKeyRows = [{ userId: 'user-1' }];
+      const verdict = await checkPolicy({ name: 'echo', serverId: 'server-1' });
+      expect(verdict).toEqual({ action: 'allow' });
+    });
+
+    it('reports deny for a policy that would deny this tool', async () => {
+      apiKeyRows = [{ userId: 'user-1' }];
+      policyRows = [
+        { yaml: 'version: 1\nrules:\n  - name: no-echo\n    match: { tool: "echo" }\n    action: deny\n' },
+      ];
+      const verdict = await checkPolicy({ name: 'echo', serverId: 'server-1' });
+      expect(verdict.action).toBe('deny');
+    });
+
+    it('reports require_approval for a policy that would require it', async () => {
+      apiKeyRows = [{ userId: 'user-1' }];
+      policyRows = [
+        {
+          yaml: 'version: 1\nrules:\n  - name: review-echo\n    match: { tool: "echo" }\n    action: require_approval\n',
+        },
+      ];
+      const verdict = await checkPolicy({ name: 'echo', serverId: 'server-1' });
+      expect(verdict.action).toBe('require_approval');
+    });
+
+    it("reports deny for a disabled identity's kill switch, before policy is even checked", async () => {
+      apiKeyRows = [{ userId: 'user-1', identityId: 'identity-1', enabled: false }];
+      const verdict = await checkPolicy({ name: 'echo', serverId: 'server-1' });
+      expect(verdict).toEqual({ action: 'deny', reason: 'identity_disabled' });
+    });
+
+    it("reports deny when the server is outside the identity's scope", async () => {
+      apiKeyRows = [
+        { userId: 'user-1', identityId: 'identity-1', enabled: true, serverScope: ['server-other'] },
+      ];
+      const verdict = await checkPolicy({ name: 'echo', serverId: 'server-1' });
+      expect(verdict).toEqual({ action: 'deny', reason: 'out_of_scope' });
+    });
+
+    it('reports deny once the budget is exhausted', async () => {
+      apiKeyRows = [{ userId: 'user-1', identityId: 'identity-1', enabled: true, budgetLimit: 5 }];
+      budgetUsedRows = [{ used: 5 }];
+      const verdict = await checkPolicy({ name: 'echo', serverId: 'server-1' });
+      expect(verdict.action).toBe('deny');
+      expect(verdict.reason).toBe('budget_exceeded');
+    });
   });
 });

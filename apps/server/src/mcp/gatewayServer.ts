@@ -56,6 +56,16 @@ const callToolInput = z.object({
   arguments: z.record(z.string(), z.unknown()).optional(),
 });
 
+// check_policy mirrors call_tool's identifying pair, but never its
+// `arguments` — the checks below (kill switch, scope, budget, policy) never
+// look at call arguments, only the (tool, serverId) identity and the
+// account's governance config, same as call_tool's own gating does before
+// it ever reaches the downstream call.
+const checkPolicyInput = z.object({
+  name: z.string().min(1),
+  serverId: z.string().min(1),
+});
+
 interface UserTool extends IndexedTool {
   inputSchema: unknown;
 }
@@ -140,6 +150,19 @@ export function createGatewayServer(userId: string, identity?: VerifiedIdentity)
           required: ['name', 'serverId'],
         },
       },
+      {
+        name: 'check_policy',
+        description:
+          'Check whether call_tool would currently allow, deny, or require approval for a tool, without actually calling it or spending any budget. Use this before a call you suspect might be blocked, to avoid wasting a real downstream round trip.',
+        inputSchema: {
+          type: 'object',
+          properties: {
+            name: { type: 'string' },
+            serverId: { type: 'string' },
+          },
+          required: ['name', 'serverId'],
+        },
+      },
     ],
   }));
 
@@ -164,6 +187,59 @@ export function createGatewayServer(userId: string, identity?: VerifiedIdentity)
       });
 
       return { content: [{ type: 'text', text: JSON.stringify(results, null, 2) }] };
+    }
+
+    if (request.params.name === 'check_policy') {
+      const input = checkPolicyInput.parse(request.params.arguments);
+
+      // Deliberately a standalone read-only path, not a call into
+      // call_tool's own blocking logic below — that logic also records
+      // audit events and consumes a matching pending approval as a side
+      // effect, neither of which belongs in a dry-run check. Mirrors
+      // call_tool's gate order (kill switch, then scope, then budget, then
+      // policy) without any of its side effects; keep the two in sync if
+      // that order ever changes.
+      if (identity && !identity.enabled) {
+        return {
+          content: [
+            { type: 'text', text: JSON.stringify({ action: 'deny', reason: 'identity_disabled' }) },
+          ],
+        };
+      }
+
+      if (identity?.serverScope && !identity.serverScope.includes(input.serverId)) {
+        return {
+          content: [{ type: 'text', text: JSON.stringify({ action: 'deny', reason: 'out_of_scope' }) }],
+        };
+      }
+
+      const [budget, verdict] = await Promise.all([
+        identity ? checkBudget(userId, identity.id, identity.budgetLimit) : null,
+        evaluateCallToolPolicy(userId, input.name, identity?.policyId),
+      ]);
+
+      if (budget && !budget.allowed) {
+        return {
+          content: [
+            {
+              type: 'text',
+              text: JSON.stringify({ action: 'deny', reason: 'budget_exceeded', remaining: budget.remaining }),
+            },
+          ],
+        };
+      }
+
+      return {
+        content: [
+          {
+            type: 'text',
+            text: JSON.stringify({
+              action: verdict.action,
+              reason: 'reason' in verdict ? verdict.reason : undefined,
+            }),
+          },
+        ],
+      };
     }
 
     if (request.params.name === 'call_tool') {
@@ -298,7 +374,7 @@ export function createGatewayServer(userId: string, identity?: VerifiedIdentity)
     }
 
     throw new Error(
-      `unknown tool "${request.params.name}" — only search_tools and call_tool are available`,
+      `unknown tool "${request.params.name}" — only search_tools, call_tool and check_policy are available`,
     );
   });
 
