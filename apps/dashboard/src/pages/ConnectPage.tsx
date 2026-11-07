@@ -9,11 +9,21 @@ const GATEWAY_MCP_URL = `${GATEWAY_URL}/mcp`;
 
 type SnippetTab = 'claude' | 'curl';
 
+// Deliberately one line, no `\` line continuation — `\` only continues a
+// line in bash/zsh. PowerShell (Windows' default terminal) uses a backtick
+// for that, so a multi-line bash-style snippet silently runs the first line
+// alone (no --header) and errors on the rest, which is exactly how a real
+// user's `claude mcp add` ended up missing its auth header. A single line
+// works unmodified in every shell.
 function connectSnippet(tab: SnippetTab, key: string): string {
   if (tab === 'claude') {
-    return `claude mcp add --transport http adaptivegate ${GATEWAY_MCP_URL} \\\n  --header "Authorization: Bearer ${key}"`;
+    return `claude mcp add --transport http adaptivegate ${GATEWAY_MCP_URL} --header "Authorization: Bearer ${key}"`;
   }
-  return `curl -X POST ${GATEWAY_MCP_URL} \\\n  -H "Authorization: Bearer ${key}" \\\n  -H "Content-Type: application/json" \\\n  -d '{"jsonrpc":"2.0","id":1,"method":"tools/list"}'`;
+  // Single-quoted JSON body: PowerShell passes a single-quoted string to an
+  // external command literally (same as bash), so this works unmodified in
+  // both — unlike a double-quoted body with escaped inner quotes, which
+  // PowerShell does NOT unescape the way bash does.
+  return `curl -X POST ${GATEWAY_MCP_URL} -H "Authorization: Bearer ${key}" -H "Content-Type: application/json" -d '{"jsonrpc":"2.0","id":1,"method":"tools/list"}'`;
 }
 
 async function copyText(text: string) {
@@ -244,6 +254,14 @@ export function ConnectPage() {
             {connectSnippet(snippetTab, snippetKey)}
           </pre>
         </div>
+        {snippetTab === 'curl' && (
+          <p className="border-t border-outline-variant/30 bg-surface-container-low px-space-lg py-space-sm text-xs text-on-surface-variant">
+            <strong className="text-on-surface">Windows PowerShell:</strong> <code>curl</code> is
+            aliased to <code>Invoke-WebRequest</code> there, which parses <code>-H</code>{' '}
+            differently and will fail. Run <code>curl.exe</code> instead of <code>curl</code> to
+            use the real curl.
+          </p>
+        )}
       </Card>
 
       <div className="grid grid-cols-1 gap-space-base sm:grid-cols-2">
