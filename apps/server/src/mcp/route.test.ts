@@ -12,6 +12,8 @@ const serversTable = Symbol('servers');
 const toolEmbeddingsTable = Symbol('toolEmbeddings');
 const policiesTable = Symbol('policies');
 const eventsTable = Symbol('events');
+const identitiesTable = Symbol('identities');
+const approvalsTable = Symbol('approvals');
 
 interface UserToolRow {
   name: string;
@@ -24,10 +26,29 @@ interface UserToolRow {
 const ALLOW_ALL_POLICY_YAML =
   'version: 1\nrules:\n  - name: allow-all\n    match: { tool: "*" }\n    action: allow\n';
 
-let apiKeyRows: Array<{ userId: string }> = [];
+interface ApiKeyRow {
+  userId: string;
+  identityId?: string | null;
+  serverScope?: string[] | null;
+  budgetLimit?: number | null;
+  policyId?: string | null;
+  enabled?: boolean | null;
+}
+
+interface ApprovalRow {
+  id: string;
+  status: 'pending' | 'approved' | 'denied';
+  expiresAt: Date;
+  consumedAt: Date | null;
+}
+
+let apiKeyRows: ApiKeyRow[] = [];
 let userToolRows: UserToolRow[] = [];
 let joinedServerUrlRows: Array<{ url: string; auth: { type: 'none' } }> = [];
 let policyRows: Array<{ yaml: string }> = [{ yaml: ALLOW_ALL_POLICY_YAML }];
+let approvalRows: ApprovalRow[] = [];
+let budgetUsedRows: Array<{ used: number }> = [{ used: 0 }];
+const approvalUpdates: Array<{ id: unknown; values: Record<string, unknown> }> = [];
 
 vi.mock('@adaptivegate/db', () => ({
   apiKeys: apiKeysTable,
@@ -35,11 +56,19 @@ vi.mock('@adaptivegate/db', () => ({
   toolEmbeddings: toolEmbeddingsTable,
   policies: policiesTable,
   events: eventsTable,
+  identities: identitiesTable,
+  approvals: approvalsTable,
   db: {
     select: () => ({
       from: (table: unknown) => {
         if (table === apiKeysTable) {
-          return { where: () => ({ limit: () => Promise.resolve(apiKeyRows) }) };
+          return {
+            where: () => ({ limit: () => Promise.resolve(apiKeyRows) }),
+            leftJoin: () => ({ where: () => ({ limit: () => Promise.resolve(apiKeyRows) }) }),
+          };
+        }
+        if (table === approvalsTable) {
+          return { where: () => ({ limit: () => Promise.resolve(approvalRows) }) };
         }
         if (table === toolEmbeddingsTable) {
           return {
@@ -55,12 +84,30 @@ vi.mock('@adaptivegate/db', () => ({
           };
         }
         if (table === eventsTable) {
-          return { where: () => ({ orderBy: () => ({ limit: () => Promise.resolve([]) }) }) };
+          return {
+            where: (): unknown => ({
+              orderBy: () => ({ limit: () => Promise.resolve([]) }),
+              then: (resolve: (value: unknown) => unknown) =>
+                Promise.resolve(budgetUsedRows).then(resolve),
+            }),
+          };
         }
         return { where: () => Promise.resolve([]) };
       },
     }),
     insert: () => ({ values: () => Promise.resolve() }),
+    update: (table: unknown) => ({
+      set: (values: Record<string, unknown>) => ({
+        where: () => {
+          if (table === approvalsTable) {
+            approvalUpdates.push({ id: undefined, values });
+            const approved = approvalRows.find((row) => row.status === 'approved');
+            if (approved) approved.consumedAt = values.consumedAt as Date;
+          }
+          return Promise.resolve();
+        },
+      }),
+    }),
   },
 }));
 
@@ -206,6 +253,9 @@ beforeEach(() => {
   userToolRows = [];
   joinedServerUrlRows = [];
   policyRows = [{ yaml: ALLOW_ALL_POLICY_YAML }];
+  approvalRows = [];
+  budgetUsedRows = [{ used: 0 }];
+  approvalUpdates.length = 0;
 });
 
 describe('/mcp', () => {
@@ -457,6 +507,122 @@ describe('/mcp', () => {
         arguments: { name: 'suspicious', serverId: 'server-1' },
       }),
     ).rejects.toThrow(/injection scan/);
+
+    await client.close();
+  });
+
+  it("call_tool is blocked by an identity's kill switch", async () => {
+    apiKeyRows = [{ userId: 'user-1', identityId: 'identity-1', enabled: false }];
+    userToolRows = [
+      { name: 'echo', description: 'echo', serverId: 'server-1', embedding: [1, 0, 0], inputSchema: {} },
+    ];
+    joinedServerUrlRows = [{ url: downstreamUrl, auth: { type: 'none' } }];
+
+    const client = new Client({ name: 'test-client', version: '0.0.0' });
+    const transport = new StreamableHTTPClientTransport(
+      new URL(`http://localhost:${gatewayPort}/mcp`),
+      { requestInit: { headers: { Authorization: 'Bearer ag_test-key' } } },
+    );
+    await client.connect(transport);
+
+    await expect(
+      client.callTool({
+        name: 'call_tool',
+        arguments: { name: 'echo', serverId: 'server-1', arguments: { message: 'hi' } },
+      }),
+    ).rejects.toThrow(/identity disabled/);
+
+    await client.close();
+  });
+
+  it("call_tool is denied when the server is outside the identity's scope", async () => {
+    apiKeyRows = [
+      { userId: 'user-1', identityId: 'identity-1', enabled: true, serverScope: ['server-other'] },
+    ];
+    userToolRows = [
+      { name: 'echo', description: 'echo', serverId: 'server-1', embedding: [1, 0, 0], inputSchema: {} },
+    ];
+    joinedServerUrlRows = [{ url: downstreamUrl, auth: { type: 'none' } }];
+
+    const client = new Client({ name: 'test-client', version: '0.0.0' });
+    const transport = new StreamableHTTPClientTransport(
+      new URL(`http://localhost:${gatewayPort}/mcp`),
+      { requestInit: { headers: { Authorization: 'Bearer ag_test-key' } } },
+    );
+    await client.connect(transport);
+
+    await expect(
+      client.callTool({
+        name: 'call_tool',
+        arguments: { name: 'echo', serverId: 'server-1', arguments: { message: 'hi' } },
+      }),
+    ).rejects.toThrow(/outside this identity's scope/);
+
+    await client.close();
+  });
+
+  it("call_tool is denied once an identity's daily budget is exhausted", async () => {
+    apiKeyRows = [{ userId: 'user-1', identityId: 'identity-1', enabled: true, budgetLimit: 5 }];
+    budgetUsedRows = [{ used: 5 }];
+    userToolRows = [
+      { name: 'echo', description: 'echo', serverId: 'server-1', embedding: [1, 0, 0], inputSchema: {} },
+    ];
+    joinedServerUrlRows = [{ url: downstreamUrl, auth: { type: 'none' } }];
+
+    const client = new Client({ name: 'test-client', version: '0.0.0' });
+    const transport = new StreamableHTTPClientTransport(
+      new URL(`http://localhost:${gatewayPort}/mcp`),
+      { requestInit: { headers: { Authorization: 'Bearer ag_test-key' } } },
+    );
+    await client.connect(transport);
+
+    await expect(
+      client.callTool({
+        name: 'call_tool',
+        arguments: { name: 'echo', serverId: 'server-1', arguments: { message: 'hi' } },
+      }),
+    ).rejects.toThrow(/budget exceeded/);
+
+    await client.close();
+  });
+
+  it('call_tool blocks on a require_approval verdict, then succeeds once an approval is approved', async () => {
+    apiKeyRows = [{ userId: 'user-1' }];
+    userToolRows = [
+      { name: 'echo', description: 'echo', serverId: 'server-1', embedding: [1, 0, 0], inputSchema: {} },
+    ];
+    joinedServerUrlRows = [{ url: downstreamUrl, auth: { type: 'none' } }];
+    policyRows = [
+      {
+        yaml: 'version: 1\nrules:\n  - name: review-echo\n    match: { tool: "echo" }\n    action: require_approval\n',
+      },
+    ];
+
+    const client = new Client({ name: 'test-client', version: '0.0.0' });
+    const transport = new StreamableHTTPClientTransport(
+      new URL(`http://localhost:${gatewayPort}/mcp`),
+      { requestInit: { headers: { Authorization: 'Bearer ag_test-key' } } },
+    );
+    await client.connect(transport);
+
+    await expect(
+      client.callTool({
+        name: 'call_tool',
+        arguments: { name: 'echo', serverId: 'server-1', arguments: { message: 'hi' } },
+      }),
+    ).rejects.toThrow(/requires approval/);
+
+    // Simulate an operator approving the pending request from the dashboard.
+    approvalRows = [
+      { id: 'approval-1', status: 'approved', expiresAt: new Date(Date.now() + 60_000), consumedAt: null },
+    ];
+
+    const result = await client.callTool({
+      name: 'call_tool',
+      arguments: { name: 'echo', serverId: 'server-1', arguments: { message: 'hi' } },
+    });
+    expect(result.content).toEqual([{ type: 'text', text: 'hi' }]);
+    expect(approvalUpdates).toHaveLength(1);
 
     await client.close();
   });

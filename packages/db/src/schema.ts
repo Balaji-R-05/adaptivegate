@@ -1,4 +1,5 @@
 import {
+  boolean,
   pgEnum,
   pgSchema,
   pgTable,
@@ -34,17 +35,6 @@ export const users = pgTable('users', {
   createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
 });
 
-export const apiKeys = pgTable('api_keys', {
-  id: uuid('id').primaryKey().defaultRandom(),
-  userId: uuid('user_id')
-    .notNull()
-    .references(() => users.id, { onDelete: 'cascade' }),
-  hashedKey: text('hashed_key').notNull(),
-  label: text('label').notNull(),
-  createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
-  revokedAt: timestamp('revoked_at', { withTimezone: true }),
-});
-
 export const servers = pgTable('servers', {
   id: uuid('id').primaryKey().defaultRandom(),
   userId: uuid('user_id')
@@ -66,6 +56,46 @@ export const policies = pgTable('policies', {
   version: integer('version').notNull(),
   yaml: text('yaml').notNull(),
   createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+});
+
+// A named, scoped, budget-limited credential for one agent (e.g.
+// "coding-agent" vs. "research-agent") — distinct from a plain user-level
+// api_keys row, which has no scope/budget restriction at all. Nullable
+// fields mean "unrestricted" (no scope limit, no budget cap), not "zero".
+export const identities = pgTable(
+  'identities',
+  {
+    id: uuid('id').primaryKey().defaultRandom(),
+    userId: uuid('user_id')
+      .notNull()
+      .references(() => users.id, { onDelete: 'cascade' }),
+    name: text('name').notNull(),
+    // null = every connected server is in scope.
+    serverScope: jsonb('server_scope').$type<string[] | null>(),
+    // null = no budget cap. Counted per calendar day — see
+    // apps/server/src/governance/budgets.ts.
+    budgetLimit: integer('budget_limit'),
+    // null = fall back to the user's latest policy (today's behavior).
+    policyId: uuid('policy_id').references(() => policies.id, { onDelete: 'set null' }),
+    // The kill switch: false denies every call for this identity immediately,
+    // before any other check.
+    enabled: boolean('enabled').notNull().default(true),
+    createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+  },
+  (table) => [unique().on(table.userId, table.name)],
+);
+
+export const apiKeys = pgTable('api_keys', {
+  id: uuid('id').primaryKey().defaultRandom(),
+  userId: uuid('user_id')
+    .notNull()
+    .references(() => users.id, { onDelete: 'cascade' }),
+  // null = a plain, unrestricted user-level key (today's only kind).
+  identityId: uuid('identity_id').references(() => identities.id, { onDelete: 'cascade' }),
+  hashedKey: text('hashed_key').notNull(),
+  label: text('label').notNull(),
+  createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+  revokedAt: timestamp('revoked_at', { withTimezone: true }),
 });
 
 export const toolEmbeddings = pgTable(
@@ -110,5 +140,30 @@ export const events = pgTable('events', {
   // the first event in a given user's chain.
   hash: text('hash').notNull(),
   previousHash: text('previous_hash'),
+  createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+});
+
+export const approvalStatus = pgEnum('approval_status', ['pending', 'approved', 'denied']);
+
+// A require_approval policy verdict creates one of these instead of just
+// blocking forever. Resolving it (apps/server/src/api/approvals.ts) doesn't
+// replay the original call — it just lets the *next* matching retry through
+// once (`consumedAt`), within `expiresAt`. "Expired" is computed from
+// `expiresAt`, not stored as its own status (see
+// packages/core/governance/src/approvals/isApprovalExpired.ts).
+export const approvals = pgTable('approvals', {
+  id: uuid('id').primaryKey().defaultRandom(),
+  userId: uuid('user_id')
+    .notNull()
+    .references(() => users.id, { onDelete: 'cascade' }),
+  identityId: uuid('identity_id').references(() => identities.id, { onDelete: 'cascade' }),
+  tool: text('tool').notNull(),
+  serverId: uuid('server_id').notNull(),
+  argumentsRedacted: jsonb('arguments_redacted'),
+  ruleName: text('rule_name').notNull(),
+  status: approvalStatus('status').notNull().default('pending'),
+  decidedAt: timestamp('decided_at', { withTimezone: true }),
+  consumedAt: timestamp('consumed_at', { withTimezone: true }),
+  expiresAt: timestamp('expires_at', { withTimezone: true }).notNull(),
   createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
 });

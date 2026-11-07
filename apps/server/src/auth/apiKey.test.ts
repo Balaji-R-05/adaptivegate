@@ -1,18 +1,36 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
-let mockRows: Array<{ userId: string }> = [];
+interface MockRow {
+  userId: string;
+  identityId?: string | null;
+  serverScope?: string[] | null;
+  budgetLimit?: number | null;
+  policyId?: string | null;
+  enabled?: boolean | null;
+}
+
+let mockRows: MockRow[] = [];
 
 vi.mock('@adaptivegate/db', () => ({
-  apiKeys: { hashedKey: 'hashedKey', revokedAt: 'revokedAt', userId: 'userId' },
+  apiKeys: { hashedKey: 'hashedKey', revokedAt: 'revokedAt', userId: 'userId', identityId: 'identityId' },
+  identities: { id: 'id', serverScope: 'serverScope', budgetLimit: 'budgetLimit', policyId: 'policyId', enabled: 'enabled' },
   db: {
     select: () => ({
       from: () => ({
-        where: () => ({
-          limit: () => Promise.resolve(mockRows),
+        leftJoin: () => ({
+          where: () => ({
+            limit: () => Promise.resolve(mockRows),
+          }),
         }),
       }),
     }),
   },
+}));
+
+vi.mock('drizzle-orm', () => ({
+  and: (...args: unknown[]) => args,
+  eq: (...args: unknown[]) => args,
+  isNull: (...args: unknown[]) => args,
 }));
 
 import { hashApiKey, verifyApiKey } from './apiKey';
@@ -39,8 +57,31 @@ describe('verifyApiKey', () => {
     expect(await verifyApiKey('ag_unknown-or-revoked')).toBeNull();
   });
 
-  it('returns the userId for a valid, active key', async () => {
-    mockRows = [{ userId: 'user-1' }];
+  it('returns just the userId for a plain, unrestricted key', async () => {
+    mockRows = [{ userId: 'user-1', identityId: null }];
     expect(await verifyApiKey('ag_valid')).toEqual({ userId: 'user-1' });
+  });
+
+  it('returns the identity scope/budget for a scoped key', async () => {
+    mockRows = [
+      {
+        userId: 'user-1',
+        identityId: 'identity-1',
+        serverScope: ['server-1'],
+        budgetLimit: 50,
+        policyId: 'policy-1',
+        enabled: true,
+      },
+    ];
+    expect(await verifyApiKey('ag_scoped')).toEqual({
+      userId: 'user-1',
+      identity: {
+        id: 'identity-1',
+        serverScope: ['server-1'],
+        budgetLimit: 50,
+        policyId: 'policy-1',
+        enabled: true,
+      },
+    });
   });
 });

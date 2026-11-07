@@ -11,8 +11,11 @@ import {
 } from '@modelcontextprotocol/sdk/types.js';
 import { and, eq } from 'drizzle-orm';
 import { z } from 'zod';
+import type { VerifiedIdentity } from '../auth/apiKey';
 import { embedText } from '../embeddings/embed';
+import { findOrCreatePendingApproval, findUnconsumedApproval } from '../governance/approvals';
 import { recordEvent } from '../governance/auditLog';
+import { checkBudget } from '../governance/budgets';
 import { evaluateCallToolPolicy } from '../governance/policyEngine';
 import { callDownstreamTool, connectDownstream } from './downstreamClient';
 
@@ -101,7 +104,7 @@ async function findToolServer(
 // search_tools runs the hybrid router (packages/core/router) over the
 // user's indexed tools across *all* their servers; call_tool forwards to
 // whichever real downstream server owns the named tool.
-export function createGatewayServer(userId: string): Server {
+export function createGatewayServer(userId: string, identity?: VerifiedIdentity): Server {
   const server = new Server(
     { name: 'adaptivegate-gateway', version: '0.0.0' },
     { capabilities: { tools: {} } },
@@ -164,26 +167,67 @@ export function createGatewayServer(userId: string): Server {
 
     if (request.params.name === 'call_tool') {
       const input = callToolInput.parse(request.params.arguments);
+      const identityId = identity?.id ?? null;
 
-      const verdict = await evaluateCallToolPolicy(userId, input.name);
-      await recordEvent({
-        userId,
-        type: 'policy_decision',
-        payload: { tool: input.name, serverId: input.serverId, verdict },
-      });
-
-      if (verdict.action !== 'allow') {
+      async function blockToolCall(payload: Record<string, unknown>): Promise<never> {
         await recordEvent({
           userId,
           type: 'tool_call',
-          payload: { tool: input.name, serverId: input.serverId, blocked: true, verdict },
+          payload: { tool: input.name, serverId: input.serverId, identityId, blocked: true, ...payload },
         });
-        // require_approval is a real policy outcome, but nothing can resolve
-        // an approval yet (that's build-order step 8) — it blocks, same as
-        // deny, with a message saying so rather than silently auto-approving.
-        throw new Error(
-          `${verdict.action === 'deny' ? 'denied' : 'blocked (requires approval, not yet available)'} by policy: ${verdict.reason}`,
-        );
+        throw new Error(payload.message as string);
+      }
+
+      // Kill switch: denies every call for this identity immediately,
+      // before scope, budget or policy are even checked.
+      if (identity && !identity.enabled) {
+        await blockToolCall({ reason: 'identity_disabled', message: 'denied: identity disabled' });
+      }
+
+      // Scope: null serverScope means "every connected server is in scope".
+      if (identity?.serverScope && !identity.serverScope.includes(input.serverId)) {
+        await blockToolCall({
+          reason: 'out_of_scope',
+          message: `denied: server "${input.serverId}" is outside this identity's scope`,
+        });
+      }
+
+      if (identity) {
+        const budget = await checkBudget(userId, identity.id, identity.budgetLimit);
+        if (!budget.allowed) {
+          await blockToolCall({
+            reason: 'budget_exceeded',
+            message: `denied: budget exceeded for this identity (limit ${String(identity.budgetLimit)}/day)`,
+          });
+        }
+      }
+
+      const verdict = await evaluateCallToolPolicy(userId, input.name, identity?.policyId);
+      await recordEvent({
+        userId,
+        type: 'policy_decision',
+        payload: { tool: input.name, serverId: input.serverId, identityId, verdict },
+      });
+
+      if (verdict.action === 'require_approval') {
+        const approvalKey = { userId, identityId, tool: input.name, serverId: input.serverId };
+        const unblocked = await findUnconsumedApproval(approvalKey);
+        if (!unblocked) {
+          await findOrCreatePendingApproval(
+            approvalKey,
+            input.arguments as Record<string, unknown> | undefined,
+            verdict.ruleName,
+          );
+          await blockToolCall({
+            reason: 'pending_approval',
+            verdict,
+            message: `blocked (requires approval — check the dashboard's Approvals page): ${verdict.reason}`,
+          });
+        }
+        // else: an operator already approved a matching request — fall
+        // through and let this call proceed, same as an "allow" verdict.
+      } else if (verdict.action !== 'allow') {
+        await blockToolCall({ reason: 'policy_denied', verdict, message: `denied by policy: ${verdict.reason}` });
       }
 
       const target = await findToolServer(userId, input.serverId, input.name);
@@ -210,18 +254,7 @@ export function createGatewayServer(userId: string): Server {
 
       const injection = scanForInjection(extractText((result as CallToolResult).content));
       if (injection.flagged) {
-        await recordEvent({
-          userId,
-          type: 'tool_call',
-          payload: {
-            tool: input.name,
-            serverId: input.serverId,
-            blocked: true,
-            reason: 'injection_scan',
-            matches: injection.matches,
-          },
-        });
-        throw new Error(`blocked: downstream output flagged by injection scan (${input.name})`);
+        await blockToolCall({ reason: 'injection_scan', matches: injection.matches, message: `blocked: downstream output flagged by injection scan (${input.name})` });
       }
 
       const argsRedaction = redactForLog(input.arguments);
@@ -232,6 +265,7 @@ export function createGatewayServer(userId: string): Server {
         payload: {
           tool: input.name,
           serverId: input.serverId,
+          identityId,
           blocked: false,
           attempts,
           recovered,
@@ -243,7 +277,7 @@ export function createGatewayServer(userId: string): Server {
         await recordEvent({
           userId,
           type: 'recovery_attempt',
-          payload: { tool: input.name, serverId: input.serverId, attempts },
+          payload: { tool: input.name, serverId: input.serverId, identityId, attempts },
         });
       }
 

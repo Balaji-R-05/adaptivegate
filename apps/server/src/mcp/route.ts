@@ -23,7 +23,7 @@ export async function mcpHandler(c: Context) {
   // connection-per-call note. Revisit when live updates (build-order step 8)
   // need real server-initiated push over this transport.
   const transport = new WebStandardStreamableHTTPServerTransport();
-  const server = createGatewayServer(verified.userId);
+  const server = createGatewayServer(verified.userId, verified.identity);
   await server.connect(transport);
   return transport.handleRequest(c.req.raw);
 }

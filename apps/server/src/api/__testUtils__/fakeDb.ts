@@ -23,6 +23,18 @@ export function and(...conditions: Condition[]): Condition {
   return { type: 'and', conditions };
 }
 
+interface DescMarker {
+  __desc: string;
+}
+export function desc(column: string): DescMarker {
+  return { __desc: column };
+}
+
+function defaultCompare(a: unknown, b: unknown): number {
+  if (a === b) return 0;
+  return (a as number | Date) < (b as number | Date) ? -1 : 1;
+}
+
 function matches(row: Row, condition?: Condition): boolean {
   if (!condition) return true;
   if (condition.type === 'eq') return row[condition.column] === condition.value;
@@ -52,12 +64,21 @@ export function createFakeDb(tables: Map<object, Row[]>) {
       return {
         from(table: object) {
           return {
-            where: (condition?: Condition) =>
-              Promise.resolve(
-                rowsOf(table)
-                  .filter((r) => matches(r, condition))
-                  .map((r) => project(r, selection)),
-              ),
+            where: (condition?: Condition) => {
+              const filtered = rowsOf(table).filter((r) => matches(r, condition));
+              const projected = filtered.map((r) => project(r, selection));
+              return {
+                then: (resolve: (v: Row[]) => unknown, reject?: (e: unknown) => unknown) =>
+                  Promise.resolve(projected).then(resolve, reject),
+                // Only `desc` is supported — no fake table here needs `asc`.
+                orderBy: (marker: DescMarker) =>
+                  Promise.resolve(
+                    [...filtered]
+                      .sort((a, b) => -defaultCompare(a[marker.__desc], b[marker.__desc]))
+                      .map((r) => project(r, selection)),
+                  ),
+              };
+            },
           };
         },
       };

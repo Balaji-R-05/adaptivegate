@@ -12,6 +12,8 @@ interface EventRow {
   type: string;
   payload: Record<string, unknown>;
   createdAt: Date;
+  hash: string;
+  previousHash: string | null;
 }
 
 type Predicate = (row: EventRow) => boolean;
@@ -36,7 +38,14 @@ function project(row: EventRow, selection?: Selection): Record<string, unknown> 
 
 let rows: EventRow[] = [];
 
-const eventsTable = { userId: 'userId', type: 'type', createdAt: 'createdAt', payload: 'payload' };
+const eventsTable = {
+  userId: 'userId',
+  type: 'type',
+  createdAt: 'createdAt',
+  payload: 'payload',
+  hash: 'hash',
+  previousHash: 'previousHash',
+};
 
 vi.mock('drizzle-orm', () => ({
   eq: (column: string, value: unknown): Predicate => (row) =>
@@ -45,7 +54,8 @@ vi.mock('drizzle-orm', () => ({
     preds.every((p) => !p || p(row)),
   lt: (column: string, value: Date): Predicate => (row) =>
     (row[column as keyof EventRow] as Date) < value,
-  desc: (column: string) => ({ __desc: column }),
+  desc: (column: string) => ({ __dir: 'desc' as const, column }),
+  asc: (column: string) => ({ __dir: 'asc' as const, column }),
   count: (): Aggregate => ({ __aggregate: 'count' }),
   sql: (strings: readonly string[]): Predicate => {
     const field = strings.join('').includes('blocked') ? 'blocked' : 'recovered';
@@ -73,11 +83,13 @@ vi.mock('@adaptivegate/db', () => ({
                   : filtered.map((r) => project(r, selection));
                 return Promise.resolve(result).then(resolve, reject);
               },
-              orderBy(descMarker: { __desc: string }) {
+              orderBy(dirMarker: { __dir: 'asc' | 'desc'; column: string }) {
+                const sign = dirMarker.__dir === 'asc' ? 1 : -1;
                 const sorted = [...filtered].sort(
                   (a, b) =>
-                    (b[descMarker.__desc as keyof EventRow] as Date).getTime() -
-                    (a[descMarker.__desc as keyof EventRow] as Date).getTime(),
+                    sign *
+                    ((a[dirMarker.column as keyof EventRow] as Date).getTime() -
+                      (b[dirMarker.column as keyof EventRow] as Date).getTime()),
                 );
                 return {
                   then(
@@ -117,6 +129,7 @@ vi.mock('@adaptivegate/db', () => ({
   },
 }));
 
+const { computeEventHash } = await import('@adaptivegate/governance');
 const { eventsRouter } = await import('./events');
 
 function buildApp(userId: string) {
@@ -136,6 +149,8 @@ function row(overrides: Partial<EventRow>): EventRow {
     type: 'tool_call',
     payload: {},
     createdAt: new Date('2026-01-01T00:00:00Z'),
+    hash: 'unused-in-list/stats-tests',
+    previousHash: null,
     ...overrides,
   };
 }
@@ -195,5 +210,51 @@ describe('GET /stats', () => {
   it("does not count another user's events", async () => {
     const res = await buildApp('user-b').request('/stats');
     expect(await res.json()).toMatchObject({ total: 1 });
+  });
+});
+
+describe('GET /verify', () => {
+  it('reports valid for a correctly hash-chained sequence', async () => {
+    const createdAt1 = new Date('2026-01-01T00:00:00Z');
+    const createdAt2 = new Date('2026-01-02T00:00:00Z');
+    const hash1 = computeEventHash(null, {
+      userId: 'user-a',
+      type: 'tool_call',
+      payload: { blocked: false },
+      createdAt: createdAt1.toISOString(),
+    });
+    const hash2 = computeEventHash(hash1, {
+      userId: 'user-a',
+      type: 'tool_call',
+      payload: { blocked: true },
+      createdAt: createdAt2.toISOString(),
+    });
+
+    rows = [
+      row({ id: 'evt-1', payload: { blocked: false }, createdAt: createdAt1, hash: hash1, previousHash: null }),
+      row({ id: 'evt-2', payload: { blocked: true }, createdAt: createdAt2, hash: hash2, previousHash: hash1 }),
+    ];
+
+    const res = await buildApp('user-a').request('/verify');
+    expect(res.status).toBe(200);
+    expect(await res.json()).toEqual({ valid: true, eventCount: 2 });
+  });
+
+  it('reports invalid when a stored row was tampered with', async () => {
+    const createdAt1 = new Date('2026-01-01T00:00:00Z');
+    const hash1 = computeEventHash(null, {
+      userId: 'user-a',
+      type: 'tool_call',
+      payload: { blocked: false },
+      createdAt: createdAt1.toISOString(),
+    });
+
+    rows = [
+      // Payload changed after the hash was computed — hash no longer matches.
+      row({ id: 'evt-1', payload: { blocked: true }, createdAt: createdAt1, hash: hash1, previousHash: null }),
+    ];
+
+    const res = await buildApp('user-a').request('/verify');
+    expect(await res.json()).toEqual({ valid: false, eventCount: 1 });
   });
 });

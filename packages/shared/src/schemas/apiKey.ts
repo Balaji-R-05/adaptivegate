@@ -5,6 +5,9 @@ import { z } from 'zod';
 export const apiKeySchema = z.object({
   id: z.string().uuid(),
   userId: z.string().uuid(),
+  // null = a plain, unrestricted user-level key — see packages/db's
+  // `identities` table for scoped/budgeted keys.
+  identityId: z.string().uuid().nullable(),
   hashedKey: z.string().min(1),
   label: z.string().min(1).max(100),
   createdAt: z.coerce.date(),

@@ -1,6 +1,7 @@
 import { db, events } from '@adaptivegate/db';
+import { verifyChain } from '@adaptivegate/governance';
 import { eventTypeSchema, listEventsQuerySchema, type EventStats } from '@adaptivegate/shared';
-import { and, count, desc, eq, lt, sql } from 'drizzle-orm';
+import { and, asc, count, desc, eq, lt, sql } from 'drizzle-orm';
 import { Hono } from 'hono';
 
 export const eventsRouter = new Hono();
@@ -72,4 +73,37 @@ eventsRouter.get('/stats', async (c) => {
 
   const stats: EventStats = { total, byType: byType as EventStats['byType'], blocked, recovered };
   return c.json(stats);
+});
+
+// Re-verifies this user's entire hash chain on demand — backs the Audit
+// page's "Verify chain" button. Just exposes the already-existing
+// verifyChain (packages/core/governance/src/audit/hashChain.ts); no new
+// verification logic here.
+eventsRouter.get('/verify', async (c) => {
+  const userId = c.get('userId');
+
+  const rows = await db
+    .select({
+      type: events.type,
+      payload: events.payload,
+      hash: events.hash,
+      previousHash: events.previousHash,
+      createdAt: events.createdAt,
+    })
+    .from(events)
+    .where(eq(events.userId, userId))
+    .orderBy(asc(events.createdAt));
+
+  const valid = verifyChain(
+    rows.map((row) => ({
+      userId,
+      type: row.type,
+      payload: row.payload,
+      hash: row.hash,
+      previousHash: row.previousHash,
+      createdAt: row.createdAt.toISOString(),
+    })),
+  );
+
+  return c.json({ valid, eventCount: rows.length });
 });

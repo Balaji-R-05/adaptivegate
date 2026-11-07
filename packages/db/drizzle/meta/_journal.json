@@ -50,6 +50,13 @@
       "when": 1793776296744,
       "tag": "0006_public_angel",
       "breakpoints": true
+    },
+    {
+      "idx": 7,
+      "version": "7",
+      "when": 1794049825544,
+      "tag": "0007_tranquil_calypso",
+      "breakpoints": true
     }
   ]
 }

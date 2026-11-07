@@ -4,6 +4,7 @@ import { apiKeySchema, createApiKeyInputSchema } from './apiKey';
 const base = {
   id: '3b0f3c8a-5b1e-4b8b-9f9e-7a6f9b3a2c11',
   userId: '3b0f3c8a-5b1e-4b8b-9f9e-7a6f9b3a2c12',
+  identityId: null,
   hashedKey: 'sha256:deadbeef',
   label: 'laptop',
   createdAt: '2026-01-01T00:00:00.000Z',
