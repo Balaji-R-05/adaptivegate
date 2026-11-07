@@ -14,10 +14,7 @@ import {
 } from '../hooks/useIdentities';
 import { usePolicies } from '../hooks/usePolicies';
 import { useServers } from '../hooks/useServers';
-
-async function copyText(text: string) {
-  await navigator.clipboard.writeText(text);
-}
+import { connectSnippet, copyText, type SnippetTab } from '../lib/connectSnippet';
 
 // Mirrors the severity bands used throughout the mockups (nominal /
 // near-limit / disabled) — computed from real usedToday/budgetLimit, never
@@ -196,6 +193,8 @@ export function IdentitiesPage() {
   const [search, setSearch] = useState('');
   const [copied, setCopied] = useState(false);
   const [editingIdentity, setEditingIdentity] = useState<IdentityWithUsage | null>(null);
+  const [snippetTab, setSnippetTab] = useState<SnippetTab>('claude');
+  const [copiedSnippet, setCopiedSnippet] = useState(false);
 
   async function handleSubmit(event: FormEvent) {
     event.preventDefault();
@@ -375,6 +374,49 @@ export function IdentitiesPage() {
               <Icon name={copied ? 'check' : 'content_copy'} className="text-[15px]" />
               {copied ? 'Copied!' : 'Copy'}
             </button>
+          </div>
+
+          <div className="mt-space-md flex flex-col gap-space-xs pl-space-xs">
+            <div className="flex items-center justify-between">
+              <span className="text-xs font-medium text-on-surface-variant">
+                Connect this identity directly
+              </span>
+              <div className="flex items-center gap-space-xs">
+                <div className="flex items-center gap-space-xxs">
+                  {(['claude', 'curl'] as const).map((tab) => (
+                    <button
+                      key={tab}
+                      type="button"
+                      onClick={() => setSnippetTab(tab)}
+                      className={`rounded px-space-sm py-0.5 text-[11px] transition-colors ${
+                        snippetTab === tab
+                          ? 'bg-inverse-surface text-inverse-on-surface'
+                          : 'bg-surface-container-low text-on-surface-variant hover:bg-surface-container'
+                      }`}
+                    >
+                      {tab === 'claude' ? 'Claude Code' : 'curl'}
+                    </button>
+                  ))}
+                </div>
+                <button
+                  type="button"
+                  onClick={() => {
+                    void copyText(connectSnippet(snippetTab, justCreated.key));
+                    setCopiedSnippet(true);
+                    setTimeout(() => setCopiedSnippet(false), 2000);
+                  }}
+                  className="flex items-center gap-space-xxs rounded-lg bg-surface-container-low px-space-sm py-0.5 text-[11px] font-medium text-on-surface transition-colors hover:bg-surface-container"
+                >
+                  <Icon name={copiedSnippet ? 'check' : 'content_copy'} className="text-[13px]" />
+                  {copiedSnippet ? 'Copied!' : 'Copy'}
+                </button>
+              </div>
+            </div>
+            <div className="overflow-x-auto rounded-lg bg-inverse-surface p-space-sm shadow-inner">
+              <pre className="font-mono text-xs leading-relaxed text-inverse-on-surface">
+                {connectSnippet(snippetTab, justCreated.key)}
+              </pre>
+            </div>
           </div>
         </Card>
       )}
