@@ -1,4 +1,4 @@
-import { fireEvent, screen } from '@testing-library/react';
+import { fireEvent, screen, waitFor } from '@testing-library/react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { installFetchMock, renderPage } from '../test/testUtils';
 import { PoliciesPage } from './PoliciesPage';
@@ -66,5 +66,43 @@ describe('PoliciesPage', () => {
     // fixed earlier in AuditPage.test.tsx/MarketplacePage.test.tsx.
     expect((await screen.findAllByText('newer-pack')).length).toBeGreaterThan(0);
     expect(await screen.findByText('older-pack')).toBeInTheDocument();
+  });
+
+  it('opens a delete confirmation and sends DELETE on confirm', async () => {
+    const deleteCalls: Array<{ url: string; body: unknown }> = [];
+    const realFetch = global.fetch;
+    global.fetch = (async (input: RequestInfo | URL, init?: RequestInit) => {
+      const url = typeof input === 'string' ? input : input.toString();
+      if (url.includes('/api/policies/') && init?.method === 'DELETE') {
+        deleteCalls.push({ url, body: init.body ? JSON.parse(init.body as string) : undefined });
+        return new Response(null, { status: 204 });
+      }
+      if (url.includes('/api/policies')) {
+        return new Response(
+          JSON.stringify([
+            {
+              id: '11111111-1111-1111-1111-111111111111',
+              userId: '22222222-2222-2222-2222-222222222222',
+              name: 'solo-pack',
+              version: 1,
+              yaml: 'version: 1\nrules: []\n',
+              createdAt: '2026-01-01T00:00:00.000Z',
+            },
+          ]),
+          { status: 200, headers: { 'Content-Type': 'application/json' } },
+        );
+      }
+      return realFetch(input);
+    }) as typeof fetch;
+
+    renderPage(<PoliciesPage />);
+    fireEvent.click(await screen.findByRole('button', { name: /Delete solo-pack/ }));
+    expect(await screen.findByRole('heading', { name: 'Delete solo-pack?' })).toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole('button', { name: /Delete Policy/ }));
+
+    await waitFor(() => expect(deleteCalls).toHaveLength(1));
+    expect(deleteCalls[0]?.url).toContain('/api/policies/11111111-1111-1111-1111-111111111111');
+    expect(deleteCalls[0]?.body).toEqual({ reassignPolicyId: null });
   });
 });

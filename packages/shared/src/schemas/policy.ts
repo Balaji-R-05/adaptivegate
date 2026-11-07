@@ -19,3 +19,15 @@ export type Policy = z.infer<typeof policySchema>;
 export const createPolicyInputSchema = policySchema.pick({ name: true, yaml: true });
 
 export type CreatePolicyInput = z.infer<typeof createPolicyInputSchema>;
+
+// Optional body for DELETE /api/policies/:id. If any identity has this
+// policy pinned, the caller chooses what happens to them: reassignPolicyId
+// repoints them to a different policy; omitting it (or sending null) falls
+// them back to no pin/account default — which is also what the database's
+// own `identities.policyId` ON DELETE SET NULL does automatically if the
+// caller doesn't specify a reassignment at all.
+export const deletePolicyInputSchema = z.object({
+  reassignPolicyId: z.string().uuid().nullable().optional(),
+});
+
+export type DeletePolicyInput = z.infer<typeof deletePolicyInputSchema>;

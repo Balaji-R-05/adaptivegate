@@ -1,5 +1,6 @@
 import { useState, type FormEvent } from 'react';
 import { Card } from '../components/Card';
+import { DeletePolicyModal } from '../components/DeletePolicyModal';
 import { Icon } from '../components/Icon';
 import { PolicyRuleBuilder } from '../components/PolicyRuleBuilder';
 import { StatTile } from '../components/StatTile';
@@ -8,8 +9,8 @@ import { POLICY_PACKS } from '../data/policyPacks';
 import { useApprovals } from '../hooks/useApprovals';
 import { useEventStats } from '../hooks/useEvents';
 import { useIdentities } from '../hooks/useIdentities';
+import { useCreatePolicy, useDeletePolicy, usePolicies } from '../hooks/usePolicies';
 import { rulesToYaml, yamlToRules, type PolicyRuleDraft } from '../lib/policyRules';
-import { useCreatePolicy, usePolicies } from '../hooks/usePolicies';
 
 const DEFAULT_YAML = `version: 1
 rules:
@@ -35,10 +36,12 @@ function PolicyPackCard({
   policy,
   isDefault,
   enforcedCount,
+  onDelete,
 }: {
   policy: PolicyRow;
   isDefault: boolean;
   enforcedCount: number | null;
+  onDelete: () => void;
 }) {
   const [expanded, setExpanded] = useState(isDefault);
   const [copied, setCopied] = useState(false);
@@ -90,14 +93,24 @@ function PolicyPackCard({
             </p>
           </div>
         </div>
-        <button
-          type="button"
-          onClick={() => setExpanded((prev) => !prev)}
-          className="flex items-center gap-1 self-end rounded-lg p-1 text-on-surface-variant transition-colors hover:bg-surface-container hover:text-on-surface md:self-auto"
-        >
-          <span className="text-sm">{expanded ? 'Collapse' : 'Expand'}</span>
-          <Icon name={expanded ? 'expand_less' : 'expand_more'} className="text-[20px]" />
-        </button>
+        <div className="flex items-center gap-space-xs self-end md:self-auto">
+          <button
+            type="button"
+            onClick={onDelete}
+            className="flex items-center gap-1 rounded-lg p-1 text-on-surface-variant transition-colors hover:bg-error-container hover:text-on-error-container"
+            aria-label={`Delete ${policy.name}`}
+          >
+            <Icon name="delete" className="text-[18px]" />
+          </button>
+          <button
+            type="button"
+            onClick={() => setExpanded((prev) => !prev)}
+            className="flex items-center gap-1 rounded-lg p-1 text-on-surface-variant transition-colors hover:bg-surface-container hover:text-on-surface"
+          >
+            <span className="text-sm">{expanded ? 'Collapse' : 'Expand'}</span>
+            <Icon name={expanded ? 'expand_less' : 'expand_more'} className="text-[20px]" />
+          </button>
+        </div>
       </div>
 
       {expanded && (
@@ -143,6 +156,7 @@ export function PoliciesPage() {
   const { data: stats } = useEventStats();
   const { data: approvals } = useApprovals();
   const createPolicy = useCreatePolicy();
+  const deletePolicy = useDeletePolicy();
 
   const [name, setName] = useState('');
   const [yaml, setYaml] = useState(DEFAULT_YAML);
@@ -155,6 +169,7 @@ export function PoliciesPage() {
   const [mode, setMode] = useState<'rules' | 'yaml'>('rules');
   const [error, setError] = useState<string | null>(null);
   const [showForm, setShowForm] = useState(false);
+  const [deletingPolicy, setDeletingPolicy] = useState<PolicyRow | null>(null);
 
   const sortedPolicies = policyList
     ? [...policyList].sort(
@@ -193,6 +208,14 @@ export function PoliciesPage() {
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to create policy');
     }
+  }
+
+  function handleConfirmDelete(reassignPolicyId: string | null) {
+    if (!deletingPolicy) return;
+    deletePolicy.mutate(
+      { id: deletingPolicy.id, input: { reassignPolicyId } },
+      { onSuccess: () => setDeletingPolicy(null) },
+    );
   }
 
   return (
@@ -374,6 +397,7 @@ export function PoliciesPage() {
               policy={policy}
               isDefault={policy.id === defaultPolicyId}
               enforcedCount={identities ? identities.filter((i) => i.policyId === policy.id).length : null}
+              onDelete={() => setDeletingPolicy(policy)}
             />
           ))
         ) : (
@@ -382,6 +406,17 @@ export function PoliciesPage() {
           </p>
         )}
       </div>
+
+      {deletingPolicy && (
+        <DeletePolicyModal
+          policy={deletingPolicy}
+          affectedIdentities={(identities ?? []).filter((i) => i.policyId === deletingPolicy.id)}
+          otherPolicies={(policyList ?? []).filter((p) => p.id !== deletingPolicy.id)}
+          onClose={() => setDeletingPolicy(null)}
+          onConfirm={handleConfirmDelete}
+          isDeleting={deletePolicy.isPending}
+        />
+      )}
     </div>
   );
 }
