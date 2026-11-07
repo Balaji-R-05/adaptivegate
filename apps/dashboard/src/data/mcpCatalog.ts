@@ -102,8 +102,7 @@ export const MCP_CATALOG: CatalogEntry[] = [
     name: 'exa',
     url: 'https://mcp.exa.ai/mcp',
     auth: { type: 'none' },
-    description:
-      'AI-native web search and page fetching. Real calls work keyless, but share a global anonymous-tier rate limit across every free user of this server — expect occasional "rate limit" errors at no fault of your own account.',
+    description: 'AI-native web search and page fetching.',
     category: 'Web',
   },
   {
@@ -111,6 +110,20 @@ export const MCP_CATALOG: CatalogEntry[] = [
     url: 'https://federal-register.1102tools.com/mcp',
     auth: { type: 'none' },
     description: 'Search and read US Federal Register documents, agencies and comment periods.',
+    category: 'Data',
+  },
+  {
+    name: 'cloudflare-docs',
+    url: 'https://docs.mcp.cloudflare.com/mcp',
+    auth: { type: 'none' },
+    description: "Search Cloudflare's own documentation (Workers, KV, R2, and the rest of the platform).",
+    category: 'Documentation',
+  },
+  {
+    name: 'huggingface',
+    url: 'https://huggingface.co/mcp',
+    auth: { type: 'none' },
+    description: 'Search Hugging Face models, datasets and spaces.',
     category: 'Data',
   },
 ];

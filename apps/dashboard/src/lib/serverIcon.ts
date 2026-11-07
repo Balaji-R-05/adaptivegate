@@ -26,6 +26,7 @@ const ICON_RULES: Array<{ match: RegExp; icon: string; colorClass: string }> = [
   { match: /context7|docs\.|documentation/i, icon: 'menu_book', colorClass: 'text-secondary' },
   { match: /firecrawl|^exa\b|exa\.ai/i, icon: 'travel_explore', colorClass: 'text-secondary' },
   { match: /federal-register|federal register/i, icon: 'account_balance', colorClass: 'text-tertiary' },
+  { match: /huggingface|hf\.co/i, icon: 'smart_toy', colorClass: 'text-tertiary' },
 ];
 
 export function iconForServer(name: string, url: string): { icon: string; colorClass: string } {
