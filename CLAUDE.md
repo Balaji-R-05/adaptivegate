@@ -132,8 +132,8 @@ pnpm benchmark           # run the governance attack benchmark
   6. Policy engine and hash-chained audit log — done
   7. Recovery policies — done
   8. Guards — done
-  9. Event logging and the Overview page
-  10. Budgets, identity and approvals resolution, with live updates
+  9. Event logging and the Overview page — done
+  10. Budgets, identity and approvals resolution — done (live push not done; approvals poll every 5s)
   11. Dry-run replay and scorecard
   12. Failure injection and the attack benchmark
 

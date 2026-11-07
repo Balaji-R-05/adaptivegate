@@ -264,8 +264,8 @@ Experiments run against a set of 5-10 real MCP servers (for example GitHub, file
 - [x] Policy engine (deterministic, side-effect-free, fail-closed) and hash-chained, append-only audit log
 - [x] Recovery policies behind a common swappable interface (retry, fallback, escalate), compared for attempts/recovery
 - [x] Guards: secret/PII redaction, injection scanning, tool-definition pinning — each with a blocked-case and a benign-case test
-- [ ] Event logging dashboard: Overview charts (event recording itself already works)
-- [ ] Budgets/kill switch, agent identity scopes, policy packs, approvals flow (dashboard and terminal) and live updates
+- [x] Event logging dashboard: Overview page (stat tiles, filterable recent-events feed)
+- [x] Budgets/kill switch, agent identity scopes, approvals flow (dashboard; no terminal/live-push yet — approvals poll every 5s) — policy packs still just user-scoped YAML, no pack library
 - [ ] Dry-run replay and governance scorecard
 - [ ] Failure injection harness and governance attack benchmark
 - [ ] Live demo with Claude Code
