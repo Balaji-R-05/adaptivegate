@@ -86,7 +86,7 @@ function PolicyPackCard({
               </span>
             </div>
             <p className="font-mono text-xs text-on-surface-variant">
-              {policy.createdAt.toLocaleString()}
+              {new Date(policy.createdAt).toLocaleString()}
             </p>
           </div>
         </div>
@@ -157,7 +157,9 @@ export function PoliciesPage() {
   const [showForm, setShowForm] = useState(false);
 
   const sortedPolicies = policyList
-    ? [...policyList].sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime())
+    ? [...policyList].sort(
+        (a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime(),
+      )
     : [];
   const defaultPolicyId = sortedPolicies[0]?.id;
   const pendingApprovals = approvals?.filter((a) => a.status === 'pending' && !a.isExpired).length;
