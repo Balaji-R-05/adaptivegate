@@ -10,6 +10,7 @@ import { AuditPage } from './pages/AuditPage';
 import { ConnectPage } from './pages/ConnectPage';
 import { IdentitiesPage } from './pages/IdentitiesPage';
 import { LandingPage } from './pages/LandingPage';
+import { MarketplacePage } from './pages/MarketplacePage';
 import { OverviewPage } from './pages/OverviewPage';
 import { PoliciesPage } from './pages/PoliciesPage';
 import { ServersPage } from './pages/ServersPage';
@@ -63,6 +64,7 @@ function SignedInShell({ email }: { email: string | undefined }) {
           <Route path="/overview" element={<OverviewPage />} />
           <Route path="/approvals" element={<ApprovalsPage />} />
           <Route path="/servers" element={<ServersPage />} />
+          <Route path="/marketplace" element={<MarketplacePage />} />
           <Route path="/connect" element={<ConnectPage />} />
           <Route path="/policies" element={<PoliciesPage />} />
           <Route path="/identities" element={<IdentitiesPage />} />

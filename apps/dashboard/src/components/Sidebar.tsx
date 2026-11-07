@@ -7,6 +7,7 @@ const NAV_ITEMS = [
   { path: '/overview', label: 'Overview', icon: 'grid_view' },
   { path: '/approvals', label: 'Approvals', icon: 'gpp_maybe' },
   { path: '/servers', label: 'Servers', icon: 'dns' },
+  { path: '/marketplace', label: 'Marketplace', icon: 'storefront' },
   { path: '/connect', label: 'Connect', icon: 'terminal' },
   { path: '/policies', label: 'Policies', icon: 'policy' },
   { path: '/identities', label: 'Identities', icon: 'group' },
