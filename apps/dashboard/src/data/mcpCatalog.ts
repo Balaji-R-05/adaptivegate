@@ -99,17 +99,11 @@ export const MCP_CATALOG: CatalogEntry[] = [
     category: 'Documentation',
   },
   {
-    name: 'firecrawl',
-    url: 'https://mcp.firecrawl.dev/v2/mcp',
-    auth: { type: 'bearer', tokenEnvPlaceholder: 'FIRECRAWL_API_KEY' },
-    description: 'Web search, scrape and parse. Connects without a key, but every real call rejected with "Anonymous keyless access is unavailable" when checked for real — needs a real API key despite its advertised keyless mode.',
-    category: 'Web',
-  },
-  {
     name: 'exa',
     url: 'https://mcp.exa.ai/mcp',
     auth: { type: 'none' },
-    description: 'AI-native web search and page fetching.',
+    description:
+      'AI-native web search and page fetching. Real calls work keyless, but share a global anonymous-tier rate limit across every free user of this server — expect occasional "rate limit" errors at no fault of your own account.',
     category: 'Web',
   },
   {
