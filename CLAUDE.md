@@ -135,7 +135,7 @@ pnpm benchmark           # run the governance attack benchmark
   9. Event logging and the Overview page — done
   10. Budgets, identity and approvals resolution — done (live push not done; approvals poll every 5s)
   11. Dry-run replay and scorecard
-  12. Failure injection and the attack benchmark
+  12. Failure injection and the attack benchmark — done
 
 ## MVP Scope
 

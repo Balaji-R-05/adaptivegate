@@ -267,7 +267,7 @@ Experiments run against a set of 5-10 real MCP servers (for example GitHub, file
 - [x] Event logging dashboard: Overview page (stat tiles, filterable recent-events feed)
 - [x] Budgets/kill switch, agent identity scopes, approvals flow (dashboard; no terminal/live-push yet — approvals poll every 5s) — policy packs still just user-scoped YAML, no pack library
 - [ ] Dry-run replay and governance scorecard
-- [ ] Failure injection harness and governance attack benchmark
+- [x] Failure injection harness and governance attack benchmark with measured results (`pnpm benchmark`)
 - [ ] Live demo with Claude Code
 - [ ] Impact measurements
 - [ ] Testing with invited users (about 5)
