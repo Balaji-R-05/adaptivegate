@@ -12,9 +12,10 @@ export function useEventStats() {
 interface EventFilters {
   type?: EventType;
   before?: string;
+  refetchInterval?: number | false;
 }
 
-export function useEvents(filters: EventFilters) {
+export function useEvents({ refetchInterval, ...filters }: EventFilters) {
   const params = new URLSearchParams();
   if (filters.type) params.set('type', filters.type);
   if (filters.before) params.set('before', filters.before);
@@ -22,6 +23,7 @@ export function useEvents(filters: EventFilters) {
   return useQuery({
     queryKey: ['events', filters],
     queryFn: () => apiClient.get<Event[]>(`/api/events?${params.toString()}`),
+    refetchInterval,
   });
 }
 

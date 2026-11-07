@@ -1,4 +1,3 @@
-import type { Identity } from '@adaptivegate/shared';
 import { useState, type FormEvent } from 'react';
 import { Card } from '../components/Card';
 import { Icon } from '../components/Icon';
@@ -8,6 +7,7 @@ import {
   useIdentities,
   useUpdateIdentity,
   type CreatedIdentity,
+  type IdentityWithUsage,
 } from '../hooks/useIdentities';
 
 function IdentityCard({
@@ -15,24 +15,57 @@ function IdentityCard({
   onToggle,
   onDelete,
 }: {
-  identity: Identity;
-  onToggle: (identity: Identity) => void;
+  identity: IdentityWithUsage;
+  onToggle: (identity: IdentityWithUsage) => void;
   onDelete: (id: string) => void;
 }) {
+  const hasLimit = identity.budgetLimit !== null;
+  const pct = hasLimit ? Math.min(100, Math.round((identity.usedToday / identity.budgetLimit!) * 100)) : 0;
+  const barColor = pct >= 85 ? 'bg-error' : 'bg-primary';
+
   return (
-    <Card className="flex flex-col gap-space-md">
-      <div className="flex items-center justify-between">
-        <span className="font-semibold text-on-surface">{identity.name}</span>
-        <span className={`h-2 w-2 rounded-full ${identity.enabled ? 'bg-tertiary-container' : 'bg-error'}`} />
-      </div>
-      <div className="flex flex-col gap-space-xs text-xs text-on-surface-variant">
-        <span>
-          Scope:{' '}
-          {identity.serverScope ? `${identity.serverScope.length} server(s)` : 'all connected servers'}
+    <Card className="flex flex-col justify-between gap-space-md !p-0">
+      <div className="flex flex-col gap-space-xs p-space-base pb-0">
+        <div className="flex items-center justify-between">
+          <span className="rounded-lg bg-surface-container-high px-space-xs py-0.5 font-mono text-[11px] text-on-surface">
+            {identity.serverScope ? `${identity.serverScope.length} server(s)` : 'all servers'}
+          </span>
+          <span className={`h-2 w-2 rounded-full ${identity.enabled ? 'bg-tertiary-container' : 'bg-error'}`} />
+        </div>
+        <span className="truncate pt-space-xs font-sans text-base font-semibold text-on-surface" title={identity.name}>
+          {identity.name}
         </span>
-        <span>Budget: {identity.budgetLimit ? `${identity.budgetLimit} calls/day` : 'unlimited'}</span>
       </div>
-      <div className="flex items-center gap-space-sm pt-space-xs">
+
+      <div className="flex flex-col gap-space-xs px-space-base">
+        <div className="flex items-center justify-between text-[11px]">
+          <span className="text-on-surface-variant">Daily Call Budget</span>
+          <span className="font-mono text-xs font-medium text-on-surface">
+            {hasLimit ? (
+              <>
+                {identity.usedToday} / {identity.budgetLimit}{' '}
+                <span className={`font-semibold ${pct >= 85 ? 'text-error' : 'text-primary'}`}>
+                  ({pct}%)
+                </span>
+              </>
+            ) : (
+              `${identity.usedToday} calls (unlimited)`
+            )}
+          </span>
+        </div>
+        {hasLimit && (
+          <div className="h-1.5 w-full overflow-hidden rounded-full bg-surface-container-low">
+            <div className={`h-full rounded-full ${barColor}`} style={{ width: `${pct}%` }} />
+          </div>
+        )}
+      </div>
+
+      <div className="flex items-center justify-between rounded-b-xl bg-surface-container-low/50 px-space-base py-space-sm">
+        <span className="text-[11px] text-on-surface-variant">Tool Invocations</span>
+        <span className="font-mono text-xs font-semibold text-on-surface">{identity.usedToday}</span>
+      </div>
+
+      <div className="flex items-center gap-space-sm px-space-base pb-space-base pt-0">
         <button
           type="button"
           onClick={() => onToggle(identity)}
@@ -85,7 +118,7 @@ export function IdentitiesPage() {
   }
 
   return (
-    <div className="mx-auto flex max-w-5xl flex-col gap-space-lg px-gutter-md py-space-lg">
+    <div className="mx-auto flex max-w-6xl flex-col gap-space-lg px-gutter-md py-space-lg">
       <div className="flex items-center justify-between">
         <h1 className="font-sans text-2xl font-semibold tracking-tight text-on-surface">Identities</h1>
         <button
@@ -147,7 +180,7 @@ export function IdentitiesPage() {
       {isLoading ? (
         <p className="text-on-surface-variant">Loading…</p>
       ) : identityList && identityList.length > 0 ? (
-        <div className="grid grid-cols-1 gap-space-base sm:grid-cols-2 lg:grid-cols-3">
+        <div className="grid grid-cols-1 gap-space-base sm:grid-cols-2 lg:grid-cols-4">
           {identityList.map((identity) => (
             <IdentityCard
               key={identity.id}

@@ -1,6 +1,6 @@
 import type { ReactNode } from 'react';
 
-export type StatusVariant = 'allowed' | 'pending' | 'blocked' | 'neutral';
+export type StatusVariant = 'allowed' | 'pending' | 'blocked' | 'recovered' | 'neutral';
 
 // Tint + border + dot, never a saturated block background — per the design
 // system's "restrained semantic accenting" rule.
@@ -8,6 +8,7 @@ const VARIANT_CLASSES: Record<StatusVariant, { pill: string; dot: string }> = {
   allowed: { pill: 'bg-surface-container-high text-tertiary', dot: 'bg-tertiary' },
   pending: { pill: 'bg-surface-container-highest text-secondary', dot: 'bg-secondary' },
   blocked: { pill: 'bg-error-container text-on-error-container', dot: 'bg-error' },
+  recovered: { pill: 'bg-surface-container-high text-secondary', dot: 'bg-secondary' },
   neutral: { pill: 'bg-surface-container-high text-on-surface-variant', dot: 'bg-outline' },
 };
 

@@ -4,13 +4,19 @@ import { createIdentityInputSchema, updateIdentityInputSchema } from '@adaptiveg
 import { and, eq } from 'drizzle-orm';
 import { Hono } from 'hono';
 import { hashApiKey } from '../auth/apiKey';
+import { countCallsToday } from '../governance/budgets';
 
 export const identitiesRouter = new Hono();
 
+// Includes `usedToday` (not part of the stored row) so the dashboard can
+// render a real usage-vs-budget bar instead of just the configured limit.
 identitiesRouter.get('/', async (c) => {
   const userId = c.get('userId');
   const rows = await db.select().from(identities).where(eq(identities.userId, userId));
-  return c.json(rows);
+  const withUsage = await Promise.all(
+    rows.map(async (row) => ({ ...row, usedToday: await countCallsToday(userId, row.id) })),
+  );
+  return c.json(withUsage);
 });
 
 // Creating an identity also mints its one API key inline — a scoped/budgeted

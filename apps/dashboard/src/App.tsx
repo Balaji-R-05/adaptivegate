@@ -35,8 +35,13 @@ function SignedInShell({ email }: { email: string | undefined }) {
         <div className="flex items-center gap-space-sm text-sm font-medium text-on-surface-variant">
           <Icon name="hub" className="text-[18px]" />
           <span>MCP Gateway</span>
+          <Icon name="chevron_right" className="text-[14px]" />
+          <span className="font-semibold text-on-surface">Default Gateway</span>
         </div>
         <div className="flex items-center gap-space-base">
+          <span className="rounded-full bg-surface-container-high px-space-sm py-0.5 text-[11px] font-semibold uppercase tracking-wider text-on-surface">
+            {import.meta.env.MODE === 'production' ? 'Production' : 'Development'}
+          </span>
           <div className="flex items-center gap-space-sm">
             <div className="flex h-8 w-8 items-center justify-center rounded-full bg-primary">
               <Icon name="person" className="text-[18px] text-on-primary" />

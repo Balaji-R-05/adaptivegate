@@ -6,10 +6,17 @@ export interface CreatedIdentity extends Identity {
   key: string;
 }
 
+// `usedToday` isn't a stored column — it's computed on the server from
+// today's events (see apps/server/src/api/identities.ts), not part of the
+// shared `Identity` zod schema.
+export interface IdentityWithUsage extends Identity {
+  usedToday: number;
+}
+
 export function useIdentities() {
   return useQuery({
     queryKey: ['identities'],
-    queryFn: () => apiClient.get<Identity[]>('/api/identities'),
+    queryFn: () => apiClient.get<IdentityWithUsage[]>('/api/identities'),
   });
 }
 

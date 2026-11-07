@@ -7,19 +7,10 @@ function startOfToday(): Date {
   return new Date(now.getFullYear(), now.getMonth(), now.getDate());
 }
 
-// Counts today's non-blocked tool_call events for one identity and runs the
-// pure evaluateBudget against it. The DB query is the only side-effecting
-// part — the actual allow/deny decision is the same deterministic function
-// used by the unit tests.
-export async function checkBudget(
-  userId: string,
-  identityId: string,
-  limit: number | null,
-): Promise<BudgetVerdict> {
-  if (limit === null) {
-    return evaluateBudget(0, null);
-  }
-
+// Today's non-blocked tool_call count for one identity — the one
+// side-effecting query shared by checkBudget (below) and the Identities/
+// Overview pages, which display it even when there's no budget limit set.
+export async function countCallsToday(userId: string, identityId: string): Promise<number> {
   const [row] = await db
     .select({ used: count() })
     .from(events)
@@ -32,6 +23,20 @@ export async function checkBudget(
         sql`${events.payload}->>'blocked' = 'false'`,
       ),
     );
+  return row?.used ?? 0;
+}
 
-  return evaluateBudget(row?.used ?? 0, limit);
+// Runs the pure evaluateBudget against today's usage — the DB query is the
+// only side-effecting part, the allow/deny decision itself is the same
+// deterministic function used by the unit tests.
+export async function checkBudget(
+  userId: string,
+  identityId: string,
+  limit: number | null,
+): Promise<BudgetVerdict> {
+  if (limit === null) {
+    return evaluateBudget(0, null);
+  }
+  const used = await countCallsToday(userId, identityId);
+  return evaluateBudget(used, limit);
 }

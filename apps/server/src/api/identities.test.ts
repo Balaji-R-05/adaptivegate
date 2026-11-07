@@ -34,6 +34,8 @@ vi.mock('@adaptivegate/db', () => ({
 
 vi.mock('drizzle-orm', () => ({ eq, and, isNull }));
 
+vi.mock('../governance/budgets', () => ({ countCallsToday: vi.fn(async () => 0) }));
+
 const { identitiesRouter } = await import('./identities');
 
 function buildApp(userId: string) {
