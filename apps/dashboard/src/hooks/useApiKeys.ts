@@ -3,12 +3,15 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { apiClient } from '../lib/apiClient';
 
 // The gateway's /api/keys never returns the hash or a raw key except once,
-// right after creation — see CreatedApiKey below.
+// right after creation — see CreatedApiKey below. createdAt/revokedAt are
+// real Date objects at runtime (apiClient's reviveDates JSON reviver) — this
+// used to declare them `string` as a workaround for the apiClient not
+// actually coercing dates; now that it does, the type matches reality.
 export interface ApiKeyListItem {
   id: string;
   label: string;
-  createdAt: string;
-  revokedAt: string | null;
+  createdAt: Date;
+  revokedAt: Date | null;
 }
 
 export interface CreatedApiKey extends ApiKeyListItem {

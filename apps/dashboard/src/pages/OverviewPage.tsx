@@ -98,7 +98,12 @@ export function OverviewPage() {
 
   function loadMore() {
     const oldest = events.at(-1);
-    if (oldest) setCursor(oldest.createdAt.toString());
+    // .toISOString(), not .toString() — the `before` query param round-trips
+    // through the server's listEventsQuerySchema (z.coerce.date()), and ISO
+    // is the one unambiguous format to send back, now that createdAt is a
+    // real Date (apiClient's reviveDates) rather than the raw ISO string it
+    // used to be.
+    if (oldest) setCursor(new Date(oldest.createdAt).toISOString());
   }
 
   const filteredEvents = useMemo(() => {
