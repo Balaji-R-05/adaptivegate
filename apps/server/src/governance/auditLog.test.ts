@@ -5,12 +5,15 @@ const eventsTable = { userId: 'userId', createdAt: 'createdAt', hash: 'hash' };
 let lastEventRows: Array<{ hash: string }> = [];
 let insertedRows: Array<Record<string, unknown>> = [];
 let failSelect = false;
+let failNextInsert = false;
+let selectCount = 0;
 const consoleErrorSpy = vi.spyOn(console, 'error').mockImplementation(() => undefined);
 
 vi.mock('@adaptivegate/db', () => ({
   events: eventsTable,
   db: {
     select: () => {
+      selectCount += 1;
       if (failSelect) throw new Error('db unavailable');
       return {
         from: () => ({
@@ -24,6 +27,10 @@ vi.mock('@adaptivegate/db', () => ({
     },
     insert: () => ({
       values: (values: Record<string, unknown>) => {
+        if (failNextInsert) {
+          failNextInsert = false;
+          return Promise.reject(new Error('insert failed'));
+        }
         insertedRows.push(values);
         return Promise.resolve();
       },
@@ -31,13 +38,15 @@ vi.mock('@adaptivegate/db', () => ({
   },
 }));
 
-const { recordEvent } = await import('./auditLog');
+const { recordEvent, createEventRecorder } = await import('./auditLog');
 
 describe('recordEvent', () => {
   beforeEach(() => {
     lastEventRows = [];
     insertedRows = [];
     failSelect = false;
+    failNextInsert = false;
+    selectCount = 0;
     consoleErrorSpy.mockClear();
   });
 
@@ -67,5 +76,52 @@ describe('recordEvent', () => {
     ).resolves.toBeUndefined();
     expect(consoleErrorSpy).toHaveBeenCalled();
     expect(insertedRows).toHaveLength(0);
+  });
+});
+
+describe('createEventRecorder', () => {
+  beforeEach(() => {
+    lastEventRows = [];
+    insertedRows = [];
+    failSelect = false;
+    failNextInsert = false;
+    selectCount = 0;
+    consoleErrorSpy.mockClear();
+  });
+
+  it('fetches the chain tip once, then chains subsequent records locally with no extra SELECT', async () => {
+    lastEventRows = [{ hash: 'tip-hash' }];
+    const recorder = createEventRecorder('user-1');
+
+    await recorder.record('policy_decision', { verdict: 'allow' });
+    expect(selectCount).toBe(1);
+    expect(insertedRows[0]).toMatchObject({ previousHash: 'tip-hash' });
+    const firstHash = insertedRows[0]?.hash as string;
+
+    await recorder.record('tool_call', { blocked: false });
+    expect(selectCount).toBe(1); // still just the one SELECT from before
+    expect(insertedRows[1]).toMatchObject({ previousHash: firstHash });
+  });
+
+  it('chains the first record from null when the user has no prior events', async () => {
+    lastEventRows = [];
+    const recorder = createEventRecorder('user-1');
+
+    await recorder.record('tool_call', { tool: 'echo' });
+    expect(insertedRows[0]).toMatchObject({ previousHash: null });
+  });
+
+  it('does not advance previousHash past a failed write', async () => {
+    lastEventRows = [{ hash: 'tip-hash' }];
+    const recorder = createEventRecorder('user-1');
+    await recorder.record('policy_decision', { verdict: 'allow' });
+
+    failNextInsert = true;
+    await recorder.record('tool_call', { blocked: false });
+    expect(consoleErrorSpy).toHaveBeenCalled();
+
+    await recorder.record('recovery_attempt', { attempts: 2 });
+    // Chains from the last *successful* insert's hash, not the failed one.
+    expect(insertedRows.at(-1)).toMatchObject({ previousHash: insertedRows[0]?.hash });
   });
 });

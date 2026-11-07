@@ -14,7 +14,7 @@ import { z } from 'zod';
 import type { VerifiedIdentity } from '../auth/apiKey';
 import { embedText } from '../embeddings/embed';
 import { findOrCreatePendingApproval, findUnconsumedApproval } from '../governance/approvals';
-import { recordEvent } from '../governance/auditLog';
+import { createEventRecorder } from '../governance/auditLog';
 import { checkBudget } from '../governance/budgets';
 import { evaluateCallToolPolicy } from '../governance/policyEngine';
 import { callDownstreamTool } from './downstreamClient';
@@ -169,12 +169,15 @@ export function createGatewayServer(userId: string, identity?: VerifiedIdentity)
     if (request.params.name === 'call_tool') {
       const input = callToolInput.parse(request.params.arguments);
       const identityId = identity?.id ?? null;
+      const recorder = createEventRecorder(userId);
 
       async function blockToolCall(payload: Record<string, unknown>): Promise<never> {
-        await recordEvent({
-          userId,
-          type: 'tool_call',
-          payload: { tool: input.name, serverId: input.serverId, identityId, blocked: true, ...payload },
+        await recorder.record('tool_call', {
+          tool: input.name,
+          serverId: input.serverId,
+          identityId,
+          blocked: true,
+          ...payload,
         });
         throw new Error(payload.message as string);
       }
@@ -193,21 +196,32 @@ export function createGatewayServer(userId: string, identity?: VerifiedIdentity)
         });
       }
 
-      if (identity) {
-        const budget = await checkBudget(userId, identity.id, identity.budgetLimit);
-        if (!budget.allowed) {
-          await blockToolCall({
-            reason: 'budget_exceeded',
-            message: `denied: budget exceeded for this identity (limit ${String(identity.budgetLimit)}/day)`,
-          });
-        }
+      // The three DB reads below are independent of each other, so they run
+      // concurrently instead of one-after-another — each round trip to this
+      // project's remote-hosted Postgres measured 500-600ms on its own, and
+      // this was the dominant cost in call_tool's latency (see
+      // docs/evaluation.md), not the downstream connection. findToolServer's
+      // result goes unused on the (rarer) deny/require_approval path below —
+      // a deliberate trade-off: a little wasted DB work there, in exchange
+      // for not adding a 4th sequential round trip on the allow path.
+      const [budget, verdict, target] = await Promise.all([
+        identity ? checkBudget(userId, identity.id, identity.budgetLimit) : null,
+        evaluateCallToolPolicy(userId, input.name, identity?.policyId),
+        findToolServer(userId, input.serverId, input.name),
+      ]);
+
+      if (budget && !budget.allowed) {
+        await blockToolCall({
+          reason: 'budget_exceeded',
+          message: `denied: budget exceeded for this identity (limit ${String(identity?.budgetLimit)}/day)`,
+        });
       }
 
-      const verdict = await evaluateCallToolPolicy(userId, input.name, identity?.policyId);
-      await recordEvent({
-        userId,
-        type: 'policy_decision',
-        payload: { tool: input.name, serverId: input.serverId, identityId, verdict },
+      await recorder.record('policy_decision', {
+        tool: input.name,
+        serverId: input.serverId,
+        identityId,
+        verdict,
       });
 
       if (verdict.action === 'require_approval') {
@@ -231,7 +245,6 @@ export function createGatewayServer(userId: string, identity?: VerifiedIdentity)
         await blockToolCall({ reason: 'policy_denied', verdict, message: `denied by policy: ${verdict.reason}` });
       }
 
-      const target = await findToolServer(userId, input.serverId, input.name);
       if (!target) {
         throw new Error(
           `no tool named "${input.name}" on server "${input.serverId}" — call search_tools first`,
@@ -262,25 +275,22 @@ export function createGatewayServer(userId: string, identity?: VerifiedIdentity)
 
       const argsRedaction = redactForLog(input.arguments);
       const outputRedaction = redactForLog((result as CallToolResult).content);
-      await recordEvent({
-        userId,
-        type: 'tool_call',
-        payload: {
-          tool: input.name,
-          serverId: input.serverId,
-          identityId,
-          blocked: false,
-          attempts,
-          recovered,
-          redactedFields: [...argsRedaction.found, ...outputRedaction.found],
-        },
+      await recorder.record('tool_call', {
+        tool: input.name,
+        serverId: input.serverId,
+        identityId,
+        blocked: false,
+        attempts,
+        recovered,
+        redactedFields: [...argsRedaction.found, ...outputRedaction.found],
       });
 
       if (recovered) {
-        await recordEvent({
-          userId,
-          type: 'recovery_attempt',
-          payload: { tool: input.name, serverId: input.serverId, identityId, attempts },
+        await recorder.record('recovery_attempt', {
+          tool: input.name,
+          serverId: input.serverId,
+          identityId,
+          attempts,
         });
       }
 
