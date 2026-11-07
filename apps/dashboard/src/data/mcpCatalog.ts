@@ -101,8 +101,8 @@ export const MCP_CATALOG: CatalogEntry[] = [
   {
     name: 'firecrawl',
     url: 'https://mcp.firecrawl.dev/v2/mcp',
-    auth: { type: 'none' },
-    description: 'Keyless web search, scrape and parse (rate-limited per IP).',
+    auth: { type: 'bearer', tokenEnvPlaceholder: 'FIRECRAWL_API_KEY' },
+    description: 'Web search, scrape and parse. Connects without a key, but every real call rejected with "Anonymous keyless access is unavailable" when checked for real — needs a real API key despite its advertised keyless mode.',
     category: 'Web',
   },
   {
