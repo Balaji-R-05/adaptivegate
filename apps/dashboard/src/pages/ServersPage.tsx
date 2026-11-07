@@ -4,6 +4,38 @@ import { Icon } from '../components/Icon';
 import { StatTile } from '../components/StatTile';
 import { useCreateServer, useDeleteServer, useResyncServer, useServers } from '../hooks/useServers';
 
+// Material Symbols has no brand/logo glyphs (it's a generic icon set, not
+// company logos), so this picks a semantically-fitting icon from the
+// server's name/URL rather than a literal brand mark — best-effort, falls
+// back to a plain server icon for anything unrecognized.
+const ICON_RULES: Array<{ match: RegExp; icon: string; colorClass: string }> = [
+  { match: /github/i, icon: 'code', colorClass: 'text-on-surface' },
+  { match: /microsoft|learn\.microsoft/i, icon: 'menu_book', colorClass: 'text-secondary' },
+  { match: /deepwiki|wiki/i, icon: 'auto_stories', colorClass: 'text-secondary' },
+  { match: /drawio|diagram/i, icon: 'schema', colorClass: 'text-primary' },
+  { match: /fetch|fetcher|web/i, icon: 'public', colorClass: 'text-secondary' },
+  { match: /ip-address|ip\.app/i, icon: 'lan', colorClass: 'text-on-surface' },
+  { match: /qr/i, icon: 'qr_code_2', colorClass: 'text-on-surface' },
+  { match: /faostat|agri/i, icon: 'agriculture', colorClass: 'text-tertiary' },
+  { match: /filings|sec/i, icon: 'account_balance', colorClass: 'text-tertiary' },
+  { match: /trade|tradetime|market/i, icon: 'show_chart', colorClass: 'text-tertiary' },
+  { match: /growo|growth/i, icon: 'trending_up', colorClass: 'text-primary' },
+  { match: /fixture|localhost|127\.0\.0\.1/i, icon: 'science', colorClass: 'text-on-surface-variant' },
+  { match: /slack/i, icon: 'forum', colorClass: 'text-secondary' },
+  { match: /jira|ticket/i, icon: 'task_alt', colorClass: 'text-primary' },
+  { match: /database|postgres|sql/i, icon: 'database', colorClass: 'text-tertiary' },
+  { match: /aws|cloud/i, icon: 'cloud', colorClass: 'text-secondary' },
+  { match: /calendar/i, icon: 'calendar_month', colorClass: 'text-primary' },
+  { match: /email|mail/i, icon: 'mail', colorClass: 'text-secondary' },
+  { match: /weather/i, icon: 'partly_cloudy_day', colorClass: 'text-tertiary' },
+];
+
+function iconForServer(name: string, url: string): { icon: string; colorClass: string } {
+  const haystack = `${name} ${url}`;
+  const rule = ICON_RULES.find((r) => r.match.test(haystack));
+  return rule ?? { icon: 'dns', colorClass: 'text-primary' };
+}
+
 export function ServersPage() {
   const { data: serverList, isLoading } = useServers();
   const createServer = useCreateServer();
@@ -211,12 +243,14 @@ export function ServersPage() {
         {isLoading ? (
           <p className="text-on-surface-variant">Loading…</p>
         ) : serverList && serverList.length > 0 ? (
-          serverList.map((server) => (
+          serverList.map((server) => {
+            const { icon, colorClass } = iconForServer(server.name, server.url);
+            return (
             <Card key={server.id} className="flex flex-col gap-space-md !p-space-lg">
               <div className="flex flex-col gap-space-sm md:flex-row md:items-center md:justify-between">
                 <div className="flex items-center gap-space-md">
-                  <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-surface-container-low text-primary">
-                    <Icon name="dns" className="text-[24px]" />
+                  <div className={`flex h-10 w-10 items-center justify-center rounded-xl bg-surface-container-low ${colorClass}`}>
+                    <Icon name={icon} className="text-[24px]" />
                   </div>
                   <div>
                     <div className="flex items-center gap-space-sm">
@@ -259,7 +293,8 @@ export function ServersPage() {
                 <span className="font-mono text-outline">id: {server.id}</span>
               </div>
             </Card>
-          ))
+            );
+          })
         ) : (
           <p className="text-on-surface-variant">No servers yet.</p>
         )}
