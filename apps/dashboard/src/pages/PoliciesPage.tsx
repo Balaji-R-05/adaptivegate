@@ -1,11 +1,14 @@
 import { useState, type FormEvent } from 'react';
 import { Card } from '../components/Card';
 import { Icon } from '../components/Icon';
+import { PolicyRuleBuilder } from '../components/PolicyRuleBuilder';
 import { StatTile } from '../components/StatTile';
 import { StatusPill } from '../components/StatusPill';
+import { POLICY_PACKS } from '../data/policyPacks';
 import { useApprovals } from '../hooks/useApprovals';
 import { useEventStats } from '../hooks/useEvents';
 import { useIdentities } from '../hooks/useIdentities';
+import { rulesToYaml, yamlToRules, type PolicyRuleDraft } from '../lib/policyRules';
 import { useCreatePolicy, usePolicies } from '../hooks/usePolicies';
 
 const DEFAULT_YAML = `version: 1
@@ -143,6 +146,13 @@ export function PoliciesPage() {
 
   const [name, setName] = useState('');
   const [yaml, setYaml] = useState(DEFAULT_YAML);
+  const [rules, setRules] = useState<PolicyRuleDraft[]>(() => yamlToRules(DEFAULT_YAML) ?? []);
+  // 'rules' is the default — most users should never have to hand-write
+  // YAML. 'yaml' stays available for power users and for pasting an
+  // exported pack back in; it's disabled (not hidden) when the current
+  // yaml doesn't round-trip through yamlToRules, so a hand-edit is never
+  // silently discarded by switching tabs.
+  const [mode, setMode] = useState<'rules' | 'yaml'>('rules');
   const [error, setError] = useState<string | null>(null);
   const [showForm, setShowForm] = useState(false);
 
@@ -152,13 +162,31 @@ export function PoliciesPage() {
   const defaultPolicyId = sortedPolicies[0]?.id;
   const pendingApprovals = approvals?.filter((a) => a.status === 'pending' && !a.isExpired).length;
 
+  const effectiveYaml = mode === 'rules' ? rulesToYaml(rules) : yaml;
+  const yamlParsesToRules = yamlToRules(yaml) !== null;
+
+  function applyPack(packYaml: string, packName: string) {
+    setYaml(packYaml);
+    setRules(yamlToRules(packYaml) ?? []);
+    setMode('rules');
+    if (!name) setName(packName);
+  }
+
+  function switchToRulesMode() {
+    const parsed = yamlToRules(yaml);
+    if (parsed) setRules(parsed);
+    setMode('rules');
+  }
+
   async function handleSubmit(event: FormEvent) {
     event.preventDefault();
     setError(null);
     try {
-      await createPolicy.mutateAsync({ name, yaml });
+      await createPolicy.mutateAsync({ name, yaml: effectiveYaml });
       setName('');
       setYaml(DEFAULT_YAML);
+      setRules(yamlToRules(DEFAULT_YAML) ?? []);
+      setMode('rules');
       setShowForm(false);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to create policy');
@@ -217,6 +245,23 @@ export function PoliciesPage() {
             </div>
           </div>
           <form onSubmit={handleSubmit} className="flex flex-col gap-space-base">
+            <div className="flex flex-col gap-space-sm">
+              <span className="text-sm font-medium text-on-surface">Start from a pack (optional)</span>
+              <div className="grid grid-cols-1 gap-space-sm sm:grid-cols-2">
+                {POLICY_PACKS.map((pack) => (
+                  <button
+                    key={pack.name}
+                    type="button"
+                    onClick={() => applyPack(pack.yaml, pack.name)}
+                    className="flex flex-col gap-space-xxs rounded-lg border border-outline-variant/40 bg-surface-container-low p-space-sm text-left transition-colors hover:border-primary hover:bg-surface-container"
+                  >
+                    <span className="font-mono text-sm font-semibold text-on-surface">{pack.name}</span>
+                    <span className="text-xs text-on-surface-variant">{pack.description}</span>
+                  </button>
+                ))}
+              </div>
+            </div>
+
             <label className="flex flex-col gap-space-xs text-sm font-medium text-on-surface">
               Policy Pack Name
               <div className="relative flex items-center">
@@ -231,24 +276,62 @@ export function PoliciesPage() {
               </div>
             </label>
 
-            <div className="flex flex-col gap-space-xs">
-              <span className="text-sm font-medium text-on-surface">
-                Policy Specification <span className="font-mono text-xs font-normal text-on-surface-variant">(YAML)</span>
-              </span>
-              <div className="flex rounded-xl bg-inverse-surface p-space-base font-mono text-xs leading-relaxed shadow-inner">
-                <div className="select-none space-y-0.5 pr-space-base text-right text-outline-variant opacity-60">
-                  {lineNumbers(yaml).map((n) => (
-                    <div key={n}>{n}</div>
-                  ))}
+            <div className="flex flex-col gap-space-sm">
+              <div className="flex items-center justify-between">
+                <span className="text-sm font-medium text-on-surface">Policy Specification</span>
+                <div className="flex rounded-lg bg-surface-container-low p-0.5 text-xs font-medium">
+                  <button
+                    type="button"
+                    onClick={switchToRulesMode}
+                    disabled={mode === 'yaml' && !yamlParsesToRules}
+                    className={`rounded px-space-sm py-1 transition-colors disabled:opacity-40 ${mode === 'rules' ? 'bg-primary text-on-primary' : 'text-on-surface-variant hover:text-on-surface'}`}
+                  >
+                    Rules
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setMode('yaml')}
+                    className={`rounded px-space-sm py-1 transition-colors ${mode === 'yaml' ? 'bg-primary text-on-primary' : 'text-on-surface-variant hover:text-on-surface'}`}
+                  >
+                    Raw YAML
+                  </button>
                 </div>
-                <textarea
-                  value={yaml}
-                  onChange={(event) => setYaml(event.target.value)}
-                  rows={lineNumbers(yaml).length}
-                  spellCheck={false}
-                  className="w-full flex-1 resize-none bg-transparent font-mono text-xs leading-relaxed text-inverse-on-surface focus:outline-none"
-                />
               </div>
+
+              {mode === 'rules' ? (
+                <>
+                  <PolicyRuleBuilder rules={rules} onChange={setRules} />
+                  <details className="rounded-lg bg-surface-container-low px-space-sm py-space-xs text-xs text-on-surface-variant">
+                    <summary className="cursor-pointer font-medium text-on-surface">Preview compiled YAML</summary>
+                    <pre className="mt-space-xs overflow-x-auto font-mono text-[11px] leading-relaxed">{effectiveYaml}</pre>
+                  </details>
+                </>
+              ) : (
+                <>
+                  {!yamlParsesToRules && (
+                    <p className="flex items-center gap-1 text-xs text-secondary">
+                      <Icon name="info" className="text-[14px]" />
+                      This YAML doesn't match the Rules tab's simple shape (comments, extra fields,
+                      or different formatting) — that's fine, it'll still save and run exactly as
+                      written, but the Rules tab can't edit it until it round-trips cleanly.
+                    </p>
+                  )}
+                  <div className="flex rounded-xl bg-inverse-surface p-space-base font-mono text-xs leading-relaxed shadow-inner">
+                    <div className="select-none space-y-0.5 pr-space-base text-right text-outline-variant opacity-60">
+                      {lineNumbers(yaml).map((n) => (
+                        <div key={n}>{n}</div>
+                      ))}
+                    </div>
+                    <textarea
+                      value={yaml}
+                      onChange={(event) => setYaml(event.target.value)}
+                      rows={lineNumbers(yaml).length}
+                      spellCheck={false}
+                      className="w-full flex-1 resize-none bg-transparent font-mono text-xs leading-relaxed text-inverse-on-surface focus:outline-none"
+                    />
+                  </div>
+                </>
+              )}
             </div>
 
             {error && (

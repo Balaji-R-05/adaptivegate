@@ -1,5 +1,7 @@
 import { useMemo, useState, type FormEvent } from 'react';
+import type { UpdateIdentityInput } from '@adaptivegate/shared';
 import { Card } from '../components/Card';
+import { EditLimitsModal } from '../components/EditLimitsModal';
 import { Icon } from '../components/Icon';
 import { StatTile } from '../components/StatTile';
 import {
@@ -37,14 +39,14 @@ function IdentityCard({
   policyName,
   serverNames,
   onToggle,
-  onEditBudget,
+  onEditLimits,
   onDelete,
 }: {
   identity: IdentityWithUsage;
   policyName: string | undefined;
   serverNames: string[] | null;
   onToggle: (identity: IdentityWithUsage) => void;
-  onEditBudget: (identity: IdentityWithUsage) => void;
+  onEditLimits: (identity: IdentityWithUsage) => void;
   onDelete: (id: string) => void;
 }) {
   const hasLimit = identity.budgetLimit !== null;
@@ -95,16 +97,14 @@ function IdentityCard({
             </div>
           </div>
           <div className="flex items-center gap-space-xs self-start md:self-auto">
-            {hasLimit && (
-              <button
-                type="button"
-                onClick={() => onEditBudget(identity)}
-                className="flex h-8 items-center gap-1 rounded-lg bg-surface-container-low px-space-sm text-xs font-medium text-on-surface transition-colors hover:bg-surface-container"
-              >
-                <Icon name="tune" className="text-[15px]" />
-                Edit budget
-              </button>
-            )}
+            <button
+              type="button"
+              onClick={() => onEditLimits(identity)}
+              className="flex h-8 items-center gap-1 rounded-lg bg-surface-container-low px-space-sm text-xs font-medium text-on-surface transition-colors hover:bg-surface-container"
+            >
+              <Icon name="tune" className="text-[15px]" />
+              Edit limits
+            </button>
             <button
               type="button"
               onClick={() => onToggle(identity)}
@@ -195,6 +195,7 @@ export function IdentitiesPage() {
   const [showForm, setShowForm] = useState(false);
   const [search, setSearch] = useState('');
   const [copied, setCopied] = useState(false);
+  const [editingIdentity, setEditingIdentity] = useState<IdentityWithUsage | null>(null);
 
   async function handleSubmit(event: FormEvent) {
     event.preventDefault();
@@ -215,15 +216,12 @@ export function IdentitiesPage() {
     }
   }
 
-  function handleEditBudget(identity: IdentityWithUsage) {
-    const next = window.prompt(
-      `New daily call budget for "${identity.name}" (currently ${identity.budgetLimit})`,
-      String(identity.budgetLimit ?? ''),
+  function handleSaveLimits(input: UpdateIdentityInput) {
+    if (!editingIdentity) return;
+    updateIdentity.mutate(
+      { id: editingIdentity.id, input },
+      { onSuccess: () => setEditingIdentity(null) },
     );
-    if (next === null) return;
-    const parsed = Number(next);
-    if (!Number.isFinite(parsed) || parsed <= 0) return;
-    updateIdentity.mutate({ id: identity.id, input: { budgetLimit: parsed } });
   }
 
   const policyNameById = useMemo(
@@ -396,7 +394,7 @@ export function IdentitiesPage() {
                   : null
               }
               onToggle={(id) => updateIdentity.mutate({ id: id.id, input: { enabled: !id.enabled } })}
-              onEditBudget={handleEditBudget}
+              onEditLimits={setEditingIdentity}
               onDelete={(id) => deleteIdentity.mutate(id)}
             />
           ))}
@@ -407,6 +405,17 @@ export function IdentitiesPage() {
             ? 'No identities match that filter.'
             : 'No identities yet — API keys created on the Connect page are unrestricted until scoped to one.'}
         </p>
+      )}
+
+      {editingIdentity && (
+        <EditLimitsModal
+          identity={editingIdentity}
+          policies={policies ?? []}
+          servers={servers ?? []}
+          onClose={() => setEditingIdentity(null)}
+          onSave={handleSaveLimits}
+          isSaving={updateIdentity.isPending}
+        />
       )}
     </div>
   );
