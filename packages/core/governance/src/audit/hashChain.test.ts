@@ -53,15 +53,48 @@ describe('verifyChain', () => {
     ];
   }
 
-  it('returns true for an untampered chain', () => {
-    expect(verifyChain(buildChain())).toBe(true);
+  it('reports valid for an untampered chain', () => {
+    expect(verifyChain(buildChain())).toEqual({
+      valid: true,
+      totalEvents: 2,
+      brokenCount: 0,
+      firstBrokenIndex: null,
+    });
   });
 
-  it('returns false if an event payload was tampered with after the fact', () => {
+  it('reports the index of a tampered event, not just that something broke', () => {
     const chain = buildChain();
     const tampered = chain.map((event, index) =>
       index === 0 ? { ...event, payload: { tool: 'tampered' } } : event,
     );
-    expect(verifyChain(tampered)).toBe(false);
+    expect(verifyChain(tampered)).toEqual({
+      valid: false,
+      totalEvents: 2,
+      brokenCount: 1,
+      firstBrokenIndex: 0,
+    });
+  });
+
+  it('counts every broken event, not just the first', () => {
+    const chain = buildChain();
+    const bothTampered = chain.map((event) => ({ ...event, payload: { tool: 'tampered' } }));
+    const result = verifyChain(bothTampered);
+    expect(result.valid).toBe(false);
+    expect(result.brokenCount).toBe(2);
+    expect(result.firstBrokenIndex).toBe(0);
+  });
+
+  it('distinguishes "a few old events are broken" from "everything is broken"', () => {
+    // Regression case for the real scenario this was built for: a handful
+    // of events written before a hashing fix stay permanently unverifiable
+    // (append-only — never rewritten), while everything since verifies
+    // fine. A flat boolean can't tell this apart from total corruption.
+    const chain = buildChain();
+    const onlyFirstTampered = chain.map((event, index) =>
+      index === 0 ? { ...event, payload: { tool: 'tampered' } } : event,
+    );
+    const result = verifyChain(onlyFirstTampered);
+    expect(result.brokenCount).toBe(1);
+    expect(result.totalEvents).toBe(2);
   });
 });

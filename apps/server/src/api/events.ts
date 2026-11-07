@@ -78,12 +78,16 @@ eventsRouter.get('/stats', async (c) => {
 // Re-verifies this user's entire hash chain on demand — backs the Audit
 // page's "Verify chain" button. Just exposes the already-existing
 // verifyChain (packages/core/governance/src/audit/hashChain.ts); no new
-// verification logic here.
+// verification logic here. Reports *where* a chain breaks, not just
+// whether it does — a handful of events written before a hashing bug fix
+// (append-only, never rewritten) permanently fail verification, and that's
+// a very different situation from the whole chain being corrupted.
 eventsRouter.get('/verify', async (c) => {
   const userId = c.get('userId');
 
   const rows = await db
     .select({
+      id: events.id,
       type: events.type,
       payload: events.payload,
       hash: events.hash,
@@ -94,7 +98,7 @@ eventsRouter.get('/verify', async (c) => {
     .where(eq(events.userId, userId))
     .orderBy(asc(events.createdAt));
 
-  const valid = verifyChain(
+  const result = verifyChain(
     rows.map((row) => ({
       userId,
       type: row.type,
@@ -105,5 +109,13 @@ eventsRouter.get('/verify', async (c) => {
     })),
   );
 
-  return c.json({ valid, eventCount: rows.length });
+  const firstBrokenEvent = result.firstBrokenIndex !== null ? rows[result.firstBrokenIndex] : undefined;
+
+  return c.json({
+    valid: result.valid,
+    eventCount: result.totalEvents,
+    brokenCount: result.brokenCount,
+    firstBrokenEventId: firstBrokenEvent?.id ?? null,
+    firstBrokenEventAt: firstBrokenEvent?.createdAt.toISOString() ?? null,
+  });
 });

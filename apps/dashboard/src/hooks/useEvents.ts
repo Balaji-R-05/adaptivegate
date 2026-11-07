@@ -27,8 +27,20 @@ export function useEvents({ refetchInterval, ...filters }: EventFilters) {
   });
 }
 
+export interface VerifyChainResponse {
+  valid: boolean;
+  eventCount: number;
+  // How many individual events have a hash mismatch, and where the first
+  // one is — lets the UI say "36/40 verified, 4 broken since <date>"
+  // instead of a flat pass/fail that can't distinguish a few old
+  // pre-fix events from total corruption.
+  brokenCount: number;
+  firstBrokenEventId: string | null;
+  firstBrokenEventAt: string | null;
+}
+
 export function useVerifyChain() {
   return useMutation({
-    mutationFn: () => apiClient.get<{ valid: boolean; eventCount: number }>('/api/events/verify'),
+    mutationFn: () => apiClient.get<VerifyChainResponse>('/api/events/verify'),
   });
 }

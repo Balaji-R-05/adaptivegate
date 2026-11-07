@@ -162,7 +162,13 @@ export function AuditPage() {
               )}
               <p className="text-sm text-on-surface-variant">
                 {verify.data
-                  ? `${verify.data.eventCount} events checked against their stored hashes.`
+                  ? verify.data.valid
+                    ? `All ${verify.data.eventCount} events verified against their stored hashes.`
+                    : `${verify.data.eventCount - verify.data.brokenCount}/${verify.data.eventCount} events verified — ${verify.data.brokenCount} broken${
+                        verify.data.firstBrokenEventAt
+                          ? `, starting ${new Date(verify.data.firstBrokenEventAt).toLocaleString()}`
+                          : ''
+                      }. If these are old events from before a hashing fix, this is expected (the log is append-only — they're never rewritten); if recent, investigate immediately.`
                   : "Click Verify Chain to recompute every event's hash and check it against what's stored."}
               </p>
             </div>

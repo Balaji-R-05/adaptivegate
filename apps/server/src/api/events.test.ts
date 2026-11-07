@@ -39,6 +39,7 @@ function project(row: EventRow, selection?: Selection): Record<string, unknown> 
 let rows: EventRow[] = [];
 
 const eventsTable = {
+  id: 'id',
   userId: 'userId',
   type: 'type',
   createdAt: 'createdAt',
@@ -237,7 +238,13 @@ describe('GET /verify', () => {
 
     const res = await buildApp('user-a').request('/verify');
     expect(res.status).toBe(200);
-    expect(await res.json()).toEqual({ valid: true, eventCount: 2 });
+    expect(await res.json()).toEqual({
+      valid: true,
+      eventCount: 2,
+      brokenCount: 0,
+      firstBrokenEventId: null,
+      firstBrokenEventAt: null,
+    });
   });
 
   it('reports invalid when a stored row was tampered with', async () => {
@@ -255,6 +262,41 @@ describe('GET /verify', () => {
     ];
 
     const res = await buildApp('user-a').request('/verify');
-    expect(await res.json()).toEqual({ valid: false, eventCount: 1 });
+    expect(await res.json()).toEqual({
+      valid: false,
+      eventCount: 1,
+      brokenCount: 1,
+      firstBrokenEventId: 'evt-1',
+      firstBrokenEventAt: createdAt1.toISOString(),
+    });
+  });
+
+  it('distinguishes a few broken events from total corruption', async () => {
+    const createdAt1 = new Date('2026-01-01T00:00:00Z');
+    const createdAt2 = new Date('2026-01-02T00:00:00Z');
+    const hash1 = computeEventHash(null, {
+      userId: 'user-a',
+      type: 'tool_call',
+      payload: { blocked: false },
+      createdAt: createdAt1.toISOString(),
+    });
+    const hash2 = computeEventHash(hash1, {
+      userId: 'user-a',
+      type: 'tool_call',
+      payload: { blocked: true },
+      createdAt: createdAt2.toISOString(),
+    });
+
+    rows = [
+      // Tampered: stored hash doesn't match a recomputation of its own fields.
+      row({ id: 'evt-1', payload: { blocked: 'TAMPERED' }, createdAt: createdAt1, hash: hash1, previousHash: null }),
+      row({ id: 'evt-2', payload: { blocked: true }, createdAt: createdAt2, hash: hash2, previousHash: hash1 }),
+    ];
+
+    const res = await buildApp('user-a').request('/verify');
+    const body = (await res.json()) as { valid: boolean; eventCount: number; brokenCount: number };
+    expect(body.valid).toBe(false);
+    expect(body.eventCount).toBe(2);
+    expect(body.brokenCount).toBe(1);
   });
 });
