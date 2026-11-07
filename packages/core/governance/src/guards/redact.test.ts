@@ -25,4 +25,22 @@ describe('redactSecrets', () => {
     expect(result.redacted).toBe(text);
     expect(result.found).toEqual([]);
   });
+
+  it('does not treat a UUID-shaped resource id as an API key (benign case)', () => {
+    // Found via real usage, not synthesized: a live Microsoft Learn docs
+    // response redacted ~109 ordinary GUIDs as "api_key" before this fix.
+    const text = 'See resource 18051f22-28ea-493e-84c0-c5c0dae4af10 for details.';
+    const result = redactSecrets(text);
+    expect(result.redacted).toBe(text);
+    expect(result.found).toEqual([]);
+  });
+
+  it('still redacts a real dash-free api-key-shaped token next to a UUID (blocked case)', () => {
+    const result = redactSecrets(
+      'resource 18051f22-28ea-493e-84c0-c5c0dae4af10 token=ag_cda46a6a3e97e1807ab940deee304393',
+    );
+    expect(result.redacted).toContain('18051f22-28ea-493e-84c0-c5c0dae4af10');
+    expect(result.redacted).toContain('[REDACTED:api_key]');
+    expect(result.found).toEqual(['api_key']);
+  });
 });

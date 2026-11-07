@@ -164,4 +164,8 @@ export const REDACTION_SCENARIOS: Array<{ name: string; text: string; expectFoun
   { name: 'phone number', text: 'call me at 415-555-0199 if it fails', expectFound: ['phone'] },
   { name: 'generic long API-key-shaped token', text: 'token=ag_cda46a6a3e97e1807ab940deee304393', expectFound: ['api_key'] },
   { name: 'ordinary short text (nothing to find)', text: 'Azure Functions triggers and bindings overview', expectFound: [] },
+  // Regression case for a real false positive found in production usage
+  // (see packages/core/governance/src/guards/redact.ts) — a UUID-shaped
+  // resource id must not be flagged as an API key.
+  { name: 'UUID-shaped resource id (not a secret)', text: 'See resource 18051f22-28ea-493e-84c0-c5c0dae4af10 for details.', expectFound: [] },
 ];
