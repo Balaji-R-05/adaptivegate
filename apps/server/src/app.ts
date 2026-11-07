@@ -1,4 +1,5 @@
 import { Hono } from 'hono';
+import { cors } from 'hono/cors';
 import { apiKeysRouter } from './api/apiKeys';
 import { approvalsRouter } from './api/approvals';
 import { eventsRouter } from './api/events';
@@ -17,7 +18,18 @@ app.all('/mcp', mcpHandler);
 
 // /api/* is the dashboard's REST API, authenticated via Supabase session —
 // a different scheme from /mcp's AdaptiveGate API keys (see
-// src/auth/supabaseAuth.ts).
+// src/auth/supabaseAuth.ts). The dashboard is a separate origin (its own
+// Vite dev server / deployment), so without CORS every browser-side fetch
+// to these routes fails silently before `requireUser` ever runs — the
+// dashboard just looks empty, with no console-visible error from this app.
+app.use(
+  '/api/*',
+  cors({
+    origin: process.env.DASHBOARD_URL ?? 'http://localhost:5173',
+    allowMethods: ['GET', 'POST', 'PATCH', 'DELETE'],
+    allowHeaders: ['Content-Type', 'Authorization'],
+  }),
+);
 app.use('/api/*', requireUser);
 app.route('/api/servers', serversRouter);
 app.route('/api/keys', apiKeysRouter);
