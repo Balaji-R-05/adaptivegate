@@ -23,6 +23,9 @@ const ICON_RULES: Array<{ match: RegExp; icon: string; colorClass: string }> = [
   { match: /calendar/i, icon: 'calendar_month', colorClass: 'text-primary' },
   { match: /email|mail/i, icon: 'mail', colorClass: 'text-secondary' },
   { match: /weather/i, icon: 'partly_cloudy_day', colorClass: 'text-tertiary' },
+  { match: /context7|docs\.|documentation/i, icon: 'menu_book', colorClass: 'text-secondary' },
+  { match: /firecrawl|^exa\b|exa\.ai/i, icon: 'travel_explore', colorClass: 'text-secondary' },
+  { match: /federal-register|federal register/i, icon: 'account_balance', colorClass: 'text-tertiary' },
 ];
 
 export function iconForServer(name: string, url: string): { icon: string; colorClass: string } {

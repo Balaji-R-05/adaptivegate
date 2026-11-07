@@ -1,9 +1,9 @@
-// Curated, not scraped — every entry here has actually been connected and
-// used through this gateway in real testing this session (see
-// docs/evaluation.md's live-catalog evaluation), except GitHub's official
-// hosted MCP server, whose endpoint is corroborated by that same document
-// rather than guessed. Deliberately small: a marketplace entry that points
-// at a broken or renamed URL is worse than no entry at all.
+// Curated, not scraped — every entry here has actually been connected to in
+// real testing (a real MCP initialize + tools/list handshake against the
+// live URL, see docs/evaluation.md), except GitHub's official hosted MCP
+// server, whose endpoint is corroborated by that same document rather than
+// guessed. Deliberately small: a marketplace entry that points at a broken
+// or renamed URL is worse than no entry at all.
 
 export interface CatalogEntry {
   name: string;
@@ -90,5 +90,33 @@ export const MCP_CATALOG: CatalogEntry[] = [
     auth: { type: 'none' },
     description: 'Child growth percentile and BMI percentile calculators.',
     category: 'Health',
+  },
+  {
+    name: 'context7',
+    url: 'https://mcp.context7.com/mcp',
+    auth: { type: 'none' },
+    description: 'Up-to-date, version-specific library and framework documentation.',
+    category: 'Documentation',
+  },
+  {
+    name: 'firecrawl',
+    url: 'https://mcp.firecrawl.dev/v2/mcp',
+    auth: { type: 'none' },
+    description: 'Keyless web search, scrape and parse (rate-limited per IP).',
+    category: 'Web',
+  },
+  {
+    name: 'exa',
+    url: 'https://mcp.exa.ai/mcp',
+    auth: { type: 'none' },
+    description: 'AI-native web search and page fetching.',
+    category: 'Web',
+  },
+  {
+    name: 'federal-register',
+    url: 'https://federal-register.1102tools.com/mcp',
+    auth: { type: 'none' },
+    description: 'Search and read US Federal Register documents, agencies and comment periods.',
+    category: 'Data',
   },
 ];
