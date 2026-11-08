@@ -126,7 +126,7 @@ pnpm benchmark           # run the governance attack benchmark
 - Build in this order unless told otherwise (marks the actual completion order so far; this list is
   project-internal tracking, not duplicated in the end-user-facing README):
   1. Repo setup (monorepo, lint/format/CI) and shared Zod/Drizzle schemas — done
-  2. Supabase login (GitHub OAuth; invite allowlist still pending) — done
+  2. Supabase login (GitHub OAuth; server-side invite allowlist via `ALLOWED_EMAILS`) — done
   3. Minimal `/mcp` gateway proxying one server with hashed API-key auth — done
   4. Dashboard Servers and Connect pages (first end-to-end loop with a real Claude Code client) — done
   5. Hybrid router — done
