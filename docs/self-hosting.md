@@ -83,6 +83,20 @@ rather run through each step yourself.
    confirmation is skipped for local deployments (`GOTRUE_MAILER_AUTOCONFIRM=true` — there's no SMTP
    server here, and requiring one would reintroduce a cloud dependency).
 
+## Updating
+
+`compose.selfhosted.yml` always points at the `:latest` images, so a new release doesn't need any
+file edited - just pull the new images, apply any new migrations, and restart:
+
+```bash
+./update.sh           # macOS/Linux/WSL
+# or: .\update.ps1     # Windows PowerShell
+```
+
+This is safe to re-run anytime; it never touches `.env` or regenerates secrets. If you built from
+source instead of using the quick-setup images, update manually: `git pull`, rebuild the images,
+then run `pnpm db:migrate` before restarting `server`/`dashboard`.
+
 ## Notes
 
 - **The server's Docker image runs the TypeScript source via `tsx`**, not the compiled `dist/`
