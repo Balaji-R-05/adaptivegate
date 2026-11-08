@@ -2,6 +2,7 @@ import { Hono } from 'hono';
 import { cors } from 'hono/cors';
 import { apiKeysRouter } from './api/apiKeys';
 import { approvalsRouter } from './api/approvals';
+import { configRouter } from './api/config';
 import { eventsRouter } from './api/events';
 import { identitiesRouter } from './api/identities';
 import { policiesRouter } from './api/policies';
@@ -48,6 +49,11 @@ app.use(
   }),
 );
 app.use('/api/*', ipRateLimit(ipLimiter));
+
+// Registered before requireUser so this route stays public - the dashboard
+// needs to fetch it before anyone is signed in.
+app.route('/api/config', configRouter);
+
 app.use('/api/*', requireUser);
 app.use('/api/*', userRateLimit(userLimiter, (c) => c.get('userId')));
 app.route('/api/servers', serversRouter);

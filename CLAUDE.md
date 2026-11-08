@@ -43,7 +43,7 @@ pnpm monorepo, TypeScript throughout.
 - `benchmark/`: governance attack scenarios and failure injection
 - `experiments/`: saved configs, seeds and results
 - `policies/`: policy packs
-- `docs/`
+- `docs/`: includes `self-hosting.md` — running the whole stack locally, no Supabase Cloud account
 
 ## Commands
 
@@ -123,7 +123,8 @@ pnpm benchmark           # run the governance attack benchmark
 - When adding experiments, save the config, policy and random seed used under `experiments/` so results are reproducible for the report and paper
 - Policy file format changes need a version bump and a migration note
 - Commit small and often with clear messages
-- Build in this order unless told otherwise (mirrors the README roadmap — keep both in sync; marks the actual completion order so far):
+- Build in this order unless told otherwise (marks the actual completion order so far; this list is
+  project-internal tracking, not duplicated in the end-user-facing README):
   1. Repo setup (monorepo, lint/format/CI) and shared Zod/Drizzle schemas — done
   2. Supabase login (GitHub OAuth; invite allowlist still pending) — done
   3. Minimal `/mcp` gateway proxying one server with hashed API-key auth — done

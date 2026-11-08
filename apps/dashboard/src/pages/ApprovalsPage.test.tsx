@@ -4,7 +4,7 @@ import { installFetchMock, renderPage } from '../test/testUtils';
 import { ApprovalsPage } from './ApprovalsPage';
 
 vi.mock('../lib/supabase', () => ({
-  supabase: { auth: { getSession: vi.fn(async () => ({ data: { session: null } })) } },
+  getSupabase: vi.fn(async () => ({ auth: { getSession: vi.fn(async () => ({ data: { session: null } })) } })),
 }));
 
 beforeEach(() => {

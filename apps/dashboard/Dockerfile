@@ -10,16 +10,21 @@ COPY apps/dashboard/package.json apps/dashboard/package.json
 COPY packages/shared/package.json packages/shared/package.json
 COPY packages/db/package.json packages/db/package.json
 
+# Installing the whole monorepo also installs apps/server's dependencies,
+# which would otherwise try to download GPU binaries we never use - skip
+# that, since it's wasted bandwidth and has caused real build failures.
+ENV ONNXRUNTIME_NODE_INSTALL_CUDA=skip
 RUN pnpm install --frozen-lockfile
 
 COPY . .
 
-# Vite inlines VITE_-prefixed vars into the built bundle at build time, not
-# runtime, so these have to arrive as build args (see compose.yml).
-ARG VITE_SUPABASE_URL
-ARG VITE_SUPABASE_ANON_KEY
-ENV VITE_SUPABASE_URL=$VITE_SUPABASE_URL
-ENV VITE_SUPABASE_ANON_KEY=$VITE_SUPABASE_ANON_KEY
+# VITE_GATEWAY_URL (the server's address) is baked in at build time, with a
+# default so no args are required. The Supabase URL/anon key are NOT baked
+# in here - the dashboard fetches those from the server at runtime instead
+# (see apps/dashboard/src/lib/supabase.ts), so this same image works for
+# any deployer's Supabase project.
+ARG VITE_GATEWAY_URL=http://localhost:3000
+ENV VITE_GATEWAY_URL=$VITE_GATEWAY_URL
 
 RUN pnpm --filter @adaptivegate/dashboard run build
 

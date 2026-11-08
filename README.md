@@ -41,7 +41,7 @@ Because the gateway sees every call between agent and tools, it is the natural p
 
 - Installable MCP server, works as a plugin/gateway for Claude Code and other agentic tools
 - **Hybrid tool routing (ToolGate)**: keyword search (BM25) combined with semantic embeddings (pgvector), merged with reciprocal rank fusion, to expose only relevant tools and reduce token usage
-- Pluggable, failure-aware recovery policies (retry, fallback tool, re-route, escalate), with comparison of policies as a research contribution
+- Pluggable, failure-aware recovery policies (retry, fallback tool, re-route, escalate)
 - Aggregates multiple downstream MCP servers behind one endpoint
 
 ### AI governance
@@ -67,24 +67,6 @@ Because the gateway sees every call between agent and tools, it is the natural p
 - **Approvals**: pending risky calls waiting for allow or deny
 - **Audit log**: searchable table with a hash-chain "verified" badge
 - **Connect**: API key manager (keys shown once, stored hashed, revocable) and copy-paste setup snippets per client
-
-## MVP and Later
-
-**MVP (core deliverable)**
-
-- Gateway with hybrid router and API-key auth
-- Dashboard with login (one OAuth provider first), Servers and Connect pages
-- Policy engine (allow, deny, require approval), budgets/kill switch and agent identity scopes
-- Hash-chained audit log, with dry-run replay and governance scorecard
-- Failure injection and governance attack benchmark, with measured results
-
-**Later (stretch goals)**
-
-- Second OAuth provider
-- MCP OAuth 2.1 so clients can sign in without pasting keys
-- Support for local stdio servers via a gateway running on the user's own machine
-- Rego/Cedar policy languages
-- Public cloud deployment beyond the invite-only test group
 
 ## Architecture
 
@@ -149,7 +131,7 @@ Every request flows: **API key → user lookup → policy engine → (approval i
 | Dashboard       | Vite, React, Tailwind CSS, shadcn/ui, TanStack Query, Recharts                    |
 | Shared schemas  | Zod (one definition used by gateway, API and dashboard)                           |
 | Database        | Supabase Postgres with Drizzle ORM, row-level security, pgvector for embeddings   |
-| Auth            | Supabase Auth (GitHub OAuth first; Google added later)                            |
+| Auth            | Supabase Auth (GitHub OAuth, or email/password) — cloud or self-hosted            |
 | Routing         | MiniSearch (BM25) + embeddings via pgvector, merged with reciprocal rank fusion   |
 | Live updates    | Server-sent events                                                                |
 | Testing         | Vitest, Playwright                                                                |
@@ -157,12 +139,11 @@ Every request flows: **API key → user lookup → policy engine → (approval i
 
 ## Getting Started
 
-> Setup steps below are placeholders; update them as the implementation lands.
-
 ### Prerequisites
 
 - Node.js 20+ and pnpm
-- A Supabase project (database and auth)
+- A Supabase project (database and auth) — **or** skip the cloud account and run everything
+  locally instead; see [docs/self-hosting.md](docs/self-hosting.md)
 - An MCP-compatible client (e.g. Claude Code)
 
 ### Installation
@@ -238,41 +219,6 @@ claude mcp add --transport http adaptivegate https://yourhost/mcp \
 ```bash
 pnpm replay --log logs/session.jsonl --policy policies/strict.yaml
 ```
-
-## Evaluation
-
-Planned experiments:
-
-- **Token reduction**: context tokens with and without the gateway, against an "all tools loaded" baseline
-- **Routing accuracy**: correct tool selected, comparing BM25-only, embedding-only and hybrid against the full-library baseline
-- **Recovery policies**: success rate and added latency across policies under injected failures
-- **Governance benchmark**: percentage of attack scenarios blocked (prompt injection, privilege escalation, exfiltration, tool poisoning) and false-positive rate on benign tasks
-- **Overhead**: latency and token cost added by governance checks
-- **Ablations**: router only, recovery only, governance only, all combined
-
-Experiments run against a set of 5-10 real MCP servers (for example GitHub, filesystem, web search and a database). Each run saves its config, policy and seed under `experiments/` so results are reproducible.
-
-## Roadmap
-
-- [x] Concept and first project review
-- [x] Repo setup: MIT license, pnpm monorepo, TS/ESLint/Prettier config, Vitest scaffolding, `.env.example`, local Postgres + pgvector via `compose.yml`
-- [x] Shared Zod schemas and Drizzle database schema (users, keys, servers, policies, events), with row-level security on every user-owned table
-- [x] Supabase login (GitHub OAuth) — invite allowlist still pending
-- [x] Minimal `/mcp` gateway (Streamable HTTP) with hashed API-key auth, outbound URL validation (SSRF guard), proxying downstream servers
-- [x] Dashboard: landing page, Servers and Connect pages (first end-to-end loop with Claude Code)
-- [x] Hybrid ToolGate router, benchmarked against BM25-only and embedding-only baselines
-- [x] Policy engine (deterministic, side-effect-free, fail-closed) and hash-chained, append-only audit log
-- [x] Recovery policies behind a common swappable interface (retry, fallback, escalate), compared for attempts/recovery
-- [x] Guards: secret/PII redaction, injection scanning, tool-definition pinning — each with a blocked-case and a benign-case test
-- [x] Event logging dashboard: Overview page (stat tiles, filterable recent-events feed)
-- [x] Budgets/kill switch, agent identity scopes, approvals flow (dashboard; no terminal/live-push yet — approvals poll every 5s) — policy packs still just user-scoped YAML, no pack library
-- [ ] Dry-run replay and governance scorecard
-- [x] Failure injection harness and governance attack benchmark with measured results (`pnpm benchmark`)
-- [ ] Live demo with Claude Code
-- [ ] Impact measurements
-- [ ] Testing with invited users (about 5)
-- [ ] Final report and paper
-- [ ] Stretch: second OAuth provider, MCP OAuth 2.1, local stdio gateway, Rego/Cedar policy languages, public cloud deployment beyond the invite-only test group
 
 ## Project Structure
 

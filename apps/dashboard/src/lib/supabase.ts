@@ -1,10 +1,30 @@
-import { createClient } from '@supabase/supabase-js';
+import { createClient, type SupabaseClient } from '@supabase/supabase-js';
 
-const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
-const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
+const GATEWAY_URL = import.meta.env.VITE_GATEWAY_URL;
 
-if (!supabaseUrl || !supabaseAnonKey) {
-  throw new Error('VITE_SUPABASE_URL and VITE_SUPABASE_ANON_KEY must be set');
+interface RuntimeConfig {
+  supabaseUrl: string;
+  supabaseAnonKey: string;
 }
 
-export const supabase = createClient(supabaseUrl, supabaseAnonKey);
+// We fetch Supabase's URL/anon key from the server at runtime instead of
+// reading them from a build-time env var, so one dashboard build works for
+// every Supabase project. Fetched once and cached - later calls just reuse
+// the same client instead of fetching or creating a new one again.
+let clientPromise: Promise<SupabaseClient> | undefined;
+
+async function initSupabase(): Promise<SupabaseClient> {
+  const res = await fetch(`${GATEWAY_URL}/api/config`);
+  if (!res.ok) {
+    throw new Error(`failed to load Supabase config from the gateway: ${res.status}`);
+  }
+  const config = (await res.json()) as RuntimeConfig;
+  return createClient(config.supabaseUrl, config.supabaseAnonKey);
+}
+
+export function getSupabase(): Promise<SupabaseClient> {
+  if (!clientPromise) {
+    clientPromise = initSupabase();
+  }
+  return clientPromise;
+}

@@ -1,0 +1,87 @@
+# The "quick setup" path - pulls ready-made images instead of building from
+# source (see docs/self-hosting.md and setup.sh/setup.ps1). This is its own
+# complete file, separate from compose.yml, so it can swap `build:` for
+# `image:` cleanly.
+#
+#   docker compose -f compose.selfhosted.yml up -d
+#
+services:
+  server:
+    image: ghcr.io/balaji-r-05/adaptivegate-server:latest
+    env_file:
+      - .env
+    environment:
+      # .env uses Docker's internal addresses (gateway:8000, db:5432) since
+      # the server runs as a container here - but the browser needs the
+      # regular localhost port instead. See apps/server/src/api/config.ts.
+      SUPABASE_PUBLIC_URL: http://localhost:8000
+    ports:
+      - '3000:3000'
+    depends_on:
+      gateway:
+        condition: service_started
+
+  dashboard:
+    image: ghcr.io/balaji-r-05/adaptivegate-dashboard:latest
+    ports:
+      - '5173:5173'
+
+  db:
+    image: supabase/postgres:17.6.1.136
+    environment:
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+    ports:
+      - '5432:5432'
+    volumes:
+      - selfhosted-db:/var/lib/postgresql/data
+      - ./scripts/zz-selfhosted-db-init.sh:/docker-entrypoint-initdb.d/zz-selfhosted-init.sh:ro
+    healthcheck:
+      test: ['CMD-SHELL', 'pg_isready -U postgres']
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  auth:
+    image: supabase/gotrue:v2.197.0
+    depends_on:
+      db:
+        condition: service_healthy
+    environment:
+      GOTRUE_API_HOST: 0.0.0.0
+      GOTRUE_API_PORT: '9999'
+      API_EXTERNAL_URL: ${SUPABASE_URL}
+
+      GOTRUE_DB_DRIVER: postgres
+      GOTRUE_DB_DATABASE_URL: postgresql://supabase_auth_admin:${POSTGRES_PASSWORD}@db:5432/postgres
+
+      GOTRUE_SITE_URL: ${SITE_URL}
+      GOTRUE_URI_ALLOW_LIST: ${SITE_URL}
+      GOTRUE_DISABLE_SIGNUP: 'false'
+
+      GOTRUE_JWT_SECRET: ${JWT_SECRET}
+      GOTRUE_JWT_EXP: '3600'
+      GOTRUE_JWT_AUD: authenticated
+      GOTRUE_JWT_DEFAULT_GROUP_NAME: authenticated
+      GOTRUE_JWT_ADMIN_ROLES: service_role
+      GOTRUE_JWT_ISSUER: ${SUPABASE_URL}
+
+      GOTRUE_EXTERNAL_EMAIL_ENABLED: 'true'
+      GOTRUE_MAILER_AUTOCONFIRM: 'true'
+    healthcheck:
+      test: ['CMD', 'wget', '--no-verbose', '--tries=1', '--spider', 'http://localhost:9999/health']
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  gateway:
+    image: nginx:alpine
+    depends_on:
+      auth:
+        condition: service_healthy
+    volumes:
+      - ./nginx.conf:/etc/nginx/conf.d/default.conf:ro
+    ports:
+      - '8000:8000'
+
+volumes:
+  selfhosted-db:

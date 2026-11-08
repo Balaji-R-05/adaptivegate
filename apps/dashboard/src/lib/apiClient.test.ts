@@ -1,11 +1,11 @@
 import { describe, expect, it, vi } from 'vitest';
 
-// apiClient.ts imports ./supabase at module scope, which throws if the
-// VITE_SUPABASE_* env vars aren't set — irrelevant to reviveDates itself
-// (a pure function), but still loaded transitively, so mock it the same
-// way every page test does.
+// apiClient.ts imports ./supabase at module scope — irrelevant to
+// reviveDates itself (a pure function), but still loaded transitively, so
+// mock it the same way every page test does (getSupabase() otherwise does a
+// real fetch to the gateway's /api/config, which doesn't exist in tests).
 vi.mock('./supabase', () => ({
-  supabase: { auth: { getSession: vi.fn(async () => ({ data: { session: null } })) } },
+  getSupabase: vi.fn(async () => ({ auth: { getSession: vi.fn(async () => ({ data: { session: null } })) } })),
 }));
 
 const { reviveDates } = await import('./apiClient');

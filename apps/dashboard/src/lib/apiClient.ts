@@ -1,8 +1,9 @@
-import { supabase } from './supabase';
+import { getSupabase } from './supabase';
 
 const GATEWAY_URL = import.meta.env.VITE_GATEWAY_URL;
 
 async function authHeader(): Promise<HeadersInit> {
+  const supabase = await getSupabase();
   const { data } = await supabase.auth.getSession();
   const token = data.session?.access_token;
   return token ? { Authorization: `Bearer ${token}` } : {};

@@ -1,4 +1,4 @@
-import { useState, type SVGProps } from 'react';
+import { useState, type FormEvent, type SVGProps } from 'react';
 
 const GATEWAY_URL = import.meta.env.VITE_GATEWAY_URL;
 const GITHUB_URL = 'https://github.com/Balaji-R-05/adaptivegate';
@@ -198,6 +198,70 @@ const FAQS = [
   },
 ] as const;
 
+// Email/password sign-in, alongside GitHub OAuth - useful for self-hosted
+// deployments that don't have a GitHub OAuth App set up.
+function EmailPasswordForm({
+  onSignIn,
+  onSignUp,
+}: {
+  onSignIn: (email: string, password: string) => Promise<string | undefined>;
+  onSignUp: (email: string, password: string) => Promise<string | undefined>;
+}) {
+  const [mode, setMode] = useState<'signin' | 'signup'>('signin');
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
+  const [error, setError] = useState<string | undefined>();
+  const [submitting, setSubmitting] = useState(false);
+
+  async function handleSubmit(event: FormEvent) {
+    event.preventDefault();
+    setSubmitting(true);
+    setError(undefined);
+    const submit = mode === 'signin' ? onSignIn : onSignUp;
+    const message = await submit(email, password);
+    setSubmitting(false);
+    setError(message);
+  }
+
+  return (
+    <form onSubmit={handleSubmit} className="mx-auto mt-6 flex max-w-xs flex-col gap-2">
+      <input
+        type="email"
+        required
+        placeholder="Email"
+        aria-label="Email"
+        value={email}
+        onChange={(event) => setEmail(event.target.value)}
+        className="rounded-md border border-white/20 bg-white/10 px-3 py-2 text-sm text-white placeholder:text-indigo-200 focus:outline-none"
+      />
+      <input
+        type="password"
+        required
+        placeholder="Password"
+        aria-label="Password"
+        value={password}
+        onChange={(event) => setPassword(event.target.value)}
+        className="rounded-md border border-white/20 bg-white/10 px-3 py-2 text-sm text-white placeholder:text-indigo-200 focus:outline-none"
+      />
+      {error && <p className="text-xs text-rose-300">{error}</p>}
+      <button
+        type="submit"
+        disabled={submitting}
+        className="rounded-md bg-white px-4 py-2 text-sm font-medium text-indigo-900 hover:bg-indigo-50 disabled:opacity-60"
+      >
+        {submitting ? 'Please wait…' : mode === 'signin' ? 'Sign in' : 'Create account'}
+      </button>
+      <button
+        type="button"
+        onClick={() => setMode((prev) => (prev === 'signin' ? 'signup' : 'signin'))}
+        className="text-xs text-indigo-200 underline hover:text-white"
+      >
+        {mode === 'signin' ? 'Need an account? Create one' : 'Already have an account? Sign in'}
+      </button>
+    </form>
+  );
+}
+
 function FaqItem({ question, answer }: { question: string; answer: string }) {
   const [open, setOpen] = useState(false);
   return (
@@ -216,7 +280,15 @@ function FaqItem({ question, answer }: { question: string; answer: string }) {
   );
 }
 
-export function LandingPage({ onSignIn }: { onSignIn: () => void }) {
+export function LandingPage({
+  onSignIn,
+  onEmailSignIn,
+  onEmailSignUp,
+}: {
+  onSignIn: () => void;
+  onEmailSignIn: (email: string, password: string) => Promise<string | undefined>;
+  onEmailSignUp: (email: string, password: string) => Promise<string | undefined>;
+}) {
   return (
     <div className="min-h-screen bg-white text-slate-900">
       {/* Hero — gradient band with the nav blended into it, like mlflow.org */}
@@ -273,6 +345,11 @@ export function LandingPage({ onSignIn }: { onSignIn: () => void }) {
               View on GitHub
             </a>
           </div>
+
+          <p className="mt-8 text-xs uppercase tracking-wider text-indigo-200">
+            or continue with email — for self-hosted deployments without GitHub OAuth configured
+          </p>
+          <EmailPasswordForm onSignIn={onEmailSignIn} onSignUp={onEmailSignUp} />
 
           <div className="mt-10 flex flex-wrap items-center justify-center gap-3 text-xs text-indigo-100">
             <span className="rounded-full bg-white/10 px-3 py-1">MIT License</span>

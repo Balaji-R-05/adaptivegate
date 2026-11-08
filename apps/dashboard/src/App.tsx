@@ -4,7 +4,7 @@ import { Icon } from './components/Icon';
 import { Sidebar } from './components/Sidebar';
 import { useApprovals } from './hooks/useApprovals';
 import { useSession } from './hooks/useSession';
-import { supabase } from './lib/supabase';
+import { getSupabase } from './lib/supabase';
 import { ApprovalsPage } from './pages/ApprovalsPage';
 import { AuditPage } from './pages/AuditPage';
 import { ConnectPage } from './pages/ConnectPage';
@@ -18,11 +18,24 @@ import { ServersPage } from './pages/ServersPage';
 const queryClient = new QueryClient();
 
 function signInWithGitHub() {
-  void supabase.auth.signInWithOAuth({ provider: 'github' });
+  void getSupabase().then((supabase) => supabase.auth.signInWithOAuth({ provider: 'github' }));
 }
 
 function signOut() {
-  void supabase.auth.signOut();
+  void getSupabase().then((supabase) => supabase.auth.signOut());
+}
+
+// Alternative to GitHub sign-in, for deployments with no GitHub OAuth App set up.
+async function signInWithEmail(email: string, password: string): Promise<string | undefined> {
+  const supabase = await getSupabase();
+  const { error } = await supabase.auth.signInWithPassword({ email, password });
+  return error?.message;
+}
+
+async function signUpWithEmail(email: string, password: string): Promise<string | undefined> {
+  const supabase = await getSupabase();
+  const { error } = await supabase.auth.signUp({ email, password });
+  return error?.message;
 }
 
 function SignedInShell({ email }: { email: string | undefined }) {
@@ -90,7 +103,11 @@ export function App() {
         ) : session ? (
           <SignedInShell email={session.user.email} />
         ) : (
-          <LandingPage onSignIn={signInWithGitHub} />
+          <LandingPage
+            onSignIn={signInWithGitHub}
+            onEmailSignIn={signInWithEmail}
+            onEmailSignUp={signUpWithEmail}
+          />
         )}
       </BrowserRouter>
     </QueryClientProvider>
