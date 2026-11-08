@@ -72,6 +72,11 @@ function Wait-Healthy($service) {
     if ([string]::IsNullOrEmpty($id)) {
       Write-Host "`n$service failed to start. Logs:"
       & $Compose[0] $Compose[1..($Compose.Length - 1)] logs $service
+      Write-Host "`nIf this looks like a credential or schema mismatch and you've run setup"
+      Write-Host "before in this directory, a leftover database volume may still have the old"
+      Write-Host "password. Fix:"
+      Write-Host "  docker compose -f compose.selfhosted.yml down -v"
+      Write-Host "  .\setup.ps1"
       throw "$service container is not running - see logs above."
     }
     $status = docker inspect -f '{{.State.Health.Status}}' $id

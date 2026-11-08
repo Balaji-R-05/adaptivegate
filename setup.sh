@@ -59,6 +59,12 @@ wait_healthy() {
       echo ""
       echo "$service failed to start. Logs:"
       $COMPOSE logs "$service"
+      echo "" >&2
+      echo "If this looks like a credential or schema mismatch and you've run setup before in" >&2
+      echo "this directory, a leftover database volume may still have the old password. Fix:" >&2
+      echo "  docker compose -f compose.selfhosted.yml down -v" >&2
+      echo "  ./setup.sh" >&2
+      echo "" >&2
       echo "$service container is not running - see logs above." >&2
       exit 1
     fi

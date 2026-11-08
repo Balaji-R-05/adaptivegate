@@ -97,6 +97,19 @@ This is safe to re-run anytime; it never touches `.env` or regenerates secrets. 
 source instead of using the quick-setup images, update manually: `git pull`, rebuild the images,
 then run `pnpm db:migrate` before restarting `server`/`dashboard`.
 
+## Troubleshooting
+
+- **`auth` fails with `password authentication failed for user "supabase_auth_admin"`, after `db`
+  reported healthy suspiciously fast.** Docker Compose names volumes by project name (the folder
+  holding `compose.selfhosted.yml`), not by clone path - a leftover `..._selfhosted-db` volume
+  from any earlier attempt in a same-named folder already has Postgres initialized with an *old*
+  password, while a fresh `.env` always generates a *new* one. Fix: clear the stale volume and
+  retry:
+  ```bash
+  docker compose -f compose.selfhosted.yml down -v
+  ./setup.sh           # or: .\setup.ps1
+  ```
+
 ## Notes
 
 - **The server's Docker image runs the TypeScript source via `tsx`**, not the compiled `dist/`
