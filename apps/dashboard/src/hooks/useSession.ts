@@ -18,17 +18,25 @@ export function useSession(): UseSessionResult {
   useEffect(() => {
     let unsubscribe: (() => void) | undefined;
 
-    getSupabase().then((supabase) => {
-      supabase.auth.getSession().then(({ data }) => {
-        setSession(data.session);
+    getSupabase()
+      .then((supabase) => {
+        supabase.auth.getSession().then(({ data }) => {
+          setSession(data.session);
+          setLoading(false);
+        });
+
+        const { data: subscription } = supabase.auth.onAuthStateChange((_event, nextSession) => {
+          setSession(nextSession);
+        });
+        unsubscribe = () => subscription.subscription.unsubscribe();
+      })
+      .catch((error: unknown) => {
+        // Without this, a fetch failure here (server unreachable, network
+        // blip) leaves the app stuck on "Loading..." forever instead of
+        // showing something - fall back to signed-out rather than hang.
+        console.error('Failed to load Supabase config:', error);
         setLoading(false);
       });
-
-      const { data: subscription } = supabase.auth.onAuthStateChange((_event, nextSession) => {
-        setSession(nextSession);
-      });
-      unsubscribe = () => subscription.subscription.unsubscribe();
-    });
 
     return () => unsubscribe?.();
   }, []);
