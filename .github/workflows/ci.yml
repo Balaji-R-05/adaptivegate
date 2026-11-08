@@ -34,3 +34,12 @@ jobs:
       - run: pnpm install --frozen-lockfile
       - run: pnpm --filter @adaptivegate/dashboard exec playwright install --with-deps chromium
       - run: pnpm test:e2e
+
+  docker-build:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        app: [server, dashboard]
+    steps:
+      - uses: actions/checkout@v4
+      - run: docker build -f apps/${{ matrix.app }}/Dockerfile .
