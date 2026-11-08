@@ -11,7 +11,8 @@ export type EventType = z.infer<typeof eventTypeSchema>;
 
 // `payload` is the per-type detail (tool name/args, policy verdict, recovery
 // attempt outcome, etc.); secrets/PII must already be redacted by the time an
-// event reaches this shape, per CLAUDE.md's audit-log conventions.
+// event reaches this shape — the audit log is append-only, so nothing
+// written here can be scrubbed after the fact.
 export const eventSchema = z.object({
   id: z.string().uuid(),
   userId: z.string().uuid(),

@@ -1,8 +1,7 @@
 // Deliberately narrow and specific — matches only the most unambiguous
 // prompt-injection phrasing, to keep false positives low on real tool
-// output (CLAUDE.md: "every guard needs both a blocked case and a benign
-// case, to track false positives"). A broader/fuzzier scanner would catch
-// more real attacks but also flag innocuous text far more often.
+// output. A broader/fuzzier scanner would catch more real attacks but also
+// flag innocuous text far more often.
 const INJECTION_PATTERNS: RegExp[] = [
   /ignore (all |any |the )?(previous|prior|above) instructions/i,
   /disregard (your |the )?(system prompt|previous instructions)/i,

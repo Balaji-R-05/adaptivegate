@@ -1,8 +1,8 @@
 import type { Operation, RecoveryPolicy } from './types';
 
 // The baseline — one attempt, no retry/fallback/escalation. Useful as a
-// comparison point for the others (CLAUDE.md: recovery policies "must be
-// swappable and comparable").
+// comparison point for the others: recovery policies are swappable and
+// comparable, so a measured gain has to beat doing nothing.
 export function noRecoveryPolicy<T>(operation: Operation<T>): RecoveryPolicy<T> {
   return {
     name: 'none',

@@ -3,7 +3,7 @@
 // anything else that wants a reproducible "this operation fails X% of the
 // time" wrapper. A fixed seed always produces the same pass/fail sequence,
 // which is what makes a failure-injection experiment's results reproducible
-// (see CLAUDE.md's "save the config, policy and random seed used").
+// run to run.
 
 export class SimulatedFailureError extends Error {
   constructor() {

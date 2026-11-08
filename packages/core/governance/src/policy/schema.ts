@@ -1,8 +1,8 @@
 import { z } from 'zod';
 
-// v1 of the policy DSL — matches the shape of CLAUDE.md's documented example
-// policy YAML, minus `agent`, `budgets`, `when`, and the `redact` action
-// (those are later build-order steps: budgets/identity and guards).
+// v1 of the policy DSL — matches the shape of this project's documented
+// example policy YAML, minus `agent`, `budgets`, `when`, and the `redact`
+// action (those are later build-order steps: budgets/identity and guards).
 export const policyActionSchema = z.enum(['allow', 'deny', 'require_approval']);
 
 export const policyRuleSchema = z.object({

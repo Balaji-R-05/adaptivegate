@@ -24,7 +24,7 @@ export interface VerifiedApiKey {
 }
 
 // Fails closed: any lookup miss, revoked key, or error returns null, never a
-// bypass (see CLAUDE.md's "default to fail closed" convention).
+// bypass.
 export async function verifyApiKey(rawKey: string): Promise<VerifiedApiKey | null> {
   const hashedKey = hashApiKey(rawKey);
 

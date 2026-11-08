@@ -1,12 +1,12 @@
 /**
  * Runs the real governance stack (@adaptivegate/governance) against a
- * labeled set of attack and benign scenarios — the comparison CLAUDE.md's
- * Evaluation Notes ask for: "Governance: attack-block rate on the
- * benchmark, false-positive rate on benign tasks, and latency/token
- * overhead of governance checks."
+ * labeled set of attack and benign scenarios: attack-block rate, false-
+ * positive rate on benign tasks, and latency/token overhead of the
+ * governance checks themselves.
  *
  * Run with: pnpm --filter @adaptivegate/benchmark run governance
  */
+
 import { mkdirSync, writeFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';

@@ -44,8 +44,8 @@ apiKeysRouter.post('/', async (c) => {
     .values({ userId, label: parsed.data.label, hashedKey: hashApiKey(rawKey) })
     .returning({ id: apiKeys.id, label: apiKeys.label, createdAt: apiKeys.createdAt });
 
-  // Shown once, never fetched again (CLAUDE.md's API key convention) — this
-  // response is the only place the raw key ever appears.
+  // Shown once, never fetched again — this response is the only place the
+  // raw key ever appears.
   return c.json({ ...row, key: rawKey }, 201);
 });
 

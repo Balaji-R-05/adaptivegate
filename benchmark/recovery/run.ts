@@ -1,7 +1,7 @@
 /**
  * Measures the real recovery policies (@adaptivegate/recovery) under
- * injected failures — the comparison CLAUDE.md's Evaluation Notes ask for:
- * "Recovery: success rate and added latency under injected failures."
+ * injected failures: success rate and added latency per policy, so recovery
+ * claims are backed by numbers rather than assumed.
  *
  * Run with: pnpm --filter @adaptivegate/benchmark run recovery
  */
@@ -18,7 +18,7 @@ import {
 } from '@adaptivegate/recovery';
 import { FAULT_SCENARIOS } from './scenarios';
 
-const SEED = 20261107; // fixed — reproducibility artifact (CLAUDE.md)
+const SEED = 20261107; // fixed, so results are reproducible run to run
 const TRIALS = 200;
 
 type PolicyName = 'none' | 'retry' | 'fallback' | 'escalate';

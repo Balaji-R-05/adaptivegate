@@ -1,7 +1,6 @@
 /**
  * Dry-runs a candidate policy YAML against a JSONL session log of past
- * tool calls, without touching any real downstream server or database —
- * CLAUDE.md's build-order step 11 and documented `pnpm replay` command.
+ * tool calls, without touching any real downstream server or database.
  *
  * Usage: pnpm replay --log <path.jsonl> --policy <path.yaml>
  *
@@ -27,8 +26,8 @@ function parseArgs(argv: string[]): { log?: string; policy?: string } {
 // The root `pnpm replay` command (package.json) runs this script via
 // `pnpm --filter`, whose cwd is this package's directory, not wherever the
 // user actually ran the command from — so a relative --log/--policy path
-// typed at the repo root (matching CLAUDE.md's documented example) would
-// otherwise resolve against the wrong directory. INIT_CWD is pnpm's own
+// typed at the repo root (as the usage example above shows) would otherwise
+// resolve against the wrong directory. INIT_CWD is pnpm's own
 // record of that original directory; tsx run directly (no pnpm filter)
 // won't set it, so fall back to the real cwd.
 function resolveFromInvocationDir(path: string): string {

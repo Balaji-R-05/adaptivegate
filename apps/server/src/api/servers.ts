@@ -98,8 +98,8 @@ serversRouter.patch('/:id', async (c) => {
     .where(and(eq(servers.id, id), eq(servers.userId, userId)));
 
   // Scoping the WHERE by userId (not just id) is what stops one user from
-  // editing another user's server — see CLAUDE.md's "scope every database
-  // query by user ID" convention.
+  // editing another user's server — every query here must be scoped by
+  // user, not just by the resource's own id.
   const [row] = await db
     .update(servers)
     .set(parsed.data)

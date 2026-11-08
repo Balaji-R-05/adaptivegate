@@ -2,8 +2,8 @@ import type { ServerAuth } from '@adaptivegate/shared';
 
 // Resolves a server's configured auth into request headers. `tokenEnv` names
 // an env var on this process — the raw token is never stored in the
-// database, only the name of where to find it (CLAUDE.md: never return
-// downstream credentials to the browser; this keeps them out of the DB too).
+// database, only the name of where to find it, so it's never exposed to the
+// browser either (there's nothing stored to return).
 export function resolveDownstreamHeaders(auth: ServerAuth): Record<string, string> {
   if (auth.type === 'none') {
     return {};

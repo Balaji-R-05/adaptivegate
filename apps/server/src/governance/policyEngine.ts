@@ -40,9 +40,8 @@ async function loadActivePolicyYaml(userId: string, policyId?: string | null): P
 }
 
 // Fail-closed in two distinct senses: no policy at all to evaluate against
-// denies (CLAUDE.md: "default to fail closed... never silently allow"), and
-// a policy that fails to parse/evaluate also denies — never falls through
-// to an implicit allow.
+// denies, and a policy that fails to parse/evaluate also denies — never
+// falls through to an implicit allow.
 export async function evaluateCallToolPolicy(
   userId: string,
   tool: string,

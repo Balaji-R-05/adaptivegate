@@ -1,8 +1,8 @@
 /**
  * Compares BM25-only, embedding-only, and hybrid routing accuracy over a
- * synthetic tool catalog (dataset.ts) — the comparison CLAUDE.md's router
- * convention requires for every router change. Not the governance attack
- * benchmark (that's a separate, later build-order step).
+ * synthetic tool catalog (dataset.ts) — required for every router change, so
+ * accuracy/latency tradeoffs are measured, not assumed. Not the governance
+ * attack benchmark (that's a separate, later build-order step).
  *
  * Run with: pnpm --filter @adaptivegate/benchmark run router
  */

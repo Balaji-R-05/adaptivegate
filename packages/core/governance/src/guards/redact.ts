@@ -1,8 +1,8 @@
-// Detectors matching the categories CLAUDE.md's example policy names
+// Detectors matching an example policy's detector names
 // (`detectors: [api_key, aws_key, email, phone]`). Applied to what gets
 // logged (tool call arguments/output in the audit payload), not to what's
-// sent downstream or returned to the agent — CLAUDE.md: "redact secrets and
-// PII before anything is written to logs."
+// sent downstream or returned to the agent — secrets/PII must be redacted
+// before anything is written to logs, not after.
 // Order matters: more specific patterns run first so the generic api_key
 // catch-all doesn't swallow part of an email/phone/AWS key before its own
 // detector gets a chance.

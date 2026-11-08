@@ -1,7 +1,7 @@
 import { z } from 'zod';
 
 // `hashedKey` only ever holds a hash — the raw key is shown once at creation
-// and never persisted (see CLAUDE.md's API key handling conventions).
+// and never persisted, so a database leak alone can't expose usable keys.
 export const apiKeySchema = z.object({
   id: z.string().uuid(),
   userId: z.string().uuid(),

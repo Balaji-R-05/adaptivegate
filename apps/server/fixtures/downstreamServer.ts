@@ -1,8 +1,8 @@
 /**
  * A minimal downstream MCP server, used only as a dev/test fixture to proxy
  * to — not part of the AdaptiveGate product. Exposes one `echo` tool over
- * Streamable HTTP, matching CLAUDE.md's "remote HTTP/SSE servers only" rule
- * for what a real downstream server looks like.
+ * Streamable HTTP, matching what a real downstream server looks like
+ * (hosted mode only accepts remote HTTP/SSE servers, never local stdio).
  *
  * Run with: pnpm --filter @adaptivegate/server run fixture:downstream
  */

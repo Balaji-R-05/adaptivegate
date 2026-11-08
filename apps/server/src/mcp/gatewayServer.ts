@@ -32,8 +32,8 @@ function extractText(value: unknown): string {
 }
 
 // Redacts secrets/PII from a value before it's written to the audit log —
-// CLAUDE.md requires logs to be redacted, but the agent still gets the real,
-// unredacted result back.
+// logs must be redacted, but the agent still gets the real, unredacted
+// result back.
 function redactForLog(value: unknown): { found: string[] } {
   const { found } = redactSecrets(extractText(value));
   return { found };

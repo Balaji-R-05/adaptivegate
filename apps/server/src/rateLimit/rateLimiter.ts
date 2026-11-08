@@ -1,7 +1,7 @@
-// Fixed-window counter, in-memory — no new dependency. Justified by
-// CLAUDE.md's own scope (invite-only, "about 5 users", single process); a
-// later move to a shared store (Redis/Upstash) would only replace this
-// file's internals, not its call sites (see rateLimit/middleware.ts).
+// Fixed-window counter, in-memory — no new dependency. Fits this project's
+// current scope (invite-only, a handful of users, single process); a later
+// move to a shared store (Redis/Upstash) would only replace this file's
+// internals, not its call sites (see rateLimit/middleware.ts).
 export interface RateLimitResult {
   allowed: boolean;
   // Milliseconds until this key's window resets, whether or not it's

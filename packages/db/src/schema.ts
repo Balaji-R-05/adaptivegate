@@ -18,7 +18,7 @@ import type { ServerAuth } from '@adaptivegate/shared';
 export const EMBEDDING_DIMENSIONS = 384;
 
 // Mirrors packages/shared's Zod schemas 1:1 — one source of truth per entity,
-// just expressed twice (runtime validation vs. storage), as CLAUDE.md requires.
+// just expressed twice (runtime validation vs. storage).
 
 // Minimal reference into Supabase Auth's own schema, so `users.id` can match
 // the id Supabase issues — we don't own or migrate this table.
@@ -106,7 +106,8 @@ export const toolEmbeddings = pgTable(
       .notNull()
       .references(() => servers.id, { onDelete: 'cascade' }),
     // Denormalized from servers.userId so every query can scope by user ID
-    // directly, per CLAUDE.md's convention, without an extra join.
+    // directly, without an extra join — every query here must be scoped by
+    // user, so this column pays for itself on every read.
     userId: uuid('user_id')
       .notNull()
       .references(() => users.id, { onDelete: 'cascade' }),

@@ -1,6 +1,6 @@
-// Curated starter policies — the ready-made packs CLAUDE.md's glossary names
-// ("safe coding agent", "read-only research agent", "no-PII") but that never
-// existed until now. Each yaml string is real, valid v1 policy syntax
+// Curated starter policies — the ready-made packs this project's glossary
+// names ("safe coding agent", "read-only research agent", "no-PII") but that
+// never existed until now. Each yaml string is real, valid v1 policy syntax
 // (parseable by @adaptivegate/governance's parsePolicyDocument/evaluatePolicy
 // — the same engine the gateway runs), not illustrative pseudo-YAML. Same
 // static-data pattern as ./mcpCatalog.ts.
