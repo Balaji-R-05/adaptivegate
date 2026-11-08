@@ -67,8 +67,15 @@ Write-Host "Starting db, auth, gateway..."
 
 Write-Host "Waiting for db, auth, gateway to report healthy..."
 function Wait-Healthy($service) {
-  $id = (& $Compose[0] $Compose[1..($Compose.Length - 1)] ps -q $service)
-  while ((docker inspect -f '{{.State.Health.Status}}' $id 2>$null) -ne 'healthy') {
+  while ($true) {
+    $id = (& $Compose[0] $Compose[1..($Compose.Length - 1)] ps -q $service)
+    if ([string]::IsNullOrEmpty($id)) {
+      Write-Host "`n$service failed to start. Logs:"
+      & $Compose[0] $Compose[1..($Compose.Length - 1)] logs $service
+      throw "$service container is not running - see logs above."
+    }
+    $status = docker inspect -f '{{.State.Health.Status}}' $id
+    if ($status -eq 'healthy') { return }
     Start-Sleep -Seconds 2
   }
 }
